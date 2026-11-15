@@ -6,6 +6,7 @@
 import { BrowserWindow, ipcMain, screen } from 'electron';
 import { FeatureConfig, DEFAULT_FEATURES, MINIMAL_FEATURES, ALL_FEATURES } from '../features/featureTypes.js';
 import type { OverlayVersion } from '../../types/overlayVersion.js';
+import { jsonForScript } from '../security/htmlEscape.js';
 
 /**
  * Build HTML for feature selection splash.
@@ -734,9 +735,9 @@ export function buildFeatureSplashHtml(currentConfig?: FeatureConfig, overlayVer
     
     function loadPreset(type) {
       const presets = {
-        minimal: ${JSON.stringify(MINIMAL_FEATURES)},
-        recommended: ${JSON.stringify(DEFAULT_FEATURES)},
-        all: ${JSON.stringify(ALL_FEATURES)}
+        minimal: ${jsonForScript(MINIMAL_FEATURES)},
+        recommended: ${jsonForScript(DEFAULT_FEATURES)},
+        all: ${jsonForScript(ALL_FEATURES)}
       };
       
       const preset = presets[type];

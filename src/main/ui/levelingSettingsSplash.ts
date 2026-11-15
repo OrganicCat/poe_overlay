@@ -7,6 +7,8 @@ import { BrowserWindow, ipcMain, screen } from 'electron';
 import { registerOverlayWindow, unregisterOverlayWindow } from './windowZManager.js';
 import type { SettingsService } from '../services/settingsService.js';
 import type { OverlayVersion } from '../../types/overlayVersion.js';
+import { secureWebPreferences } from '../security/webPreferences.js';
+import { jsonForScript } from '../security/htmlEscape.js';
 
 interface LevelingSettingsSplashParams {
   settingsService: SettingsService;
@@ -75,11 +77,7 @@ export function openLevelingSettingsSplash(params: LevelingSettingsSplashParams)
     alwaysOnTop: true,
     skipTaskbar: true,
     show: false,
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-      preload: undefined
-    }
+    webPreferences: secureWebPreferences()
   });
 
   // Track as active settings window
@@ -1363,7 +1361,7 @@ function buildLevelingSettingsSplashHtml(
   </div>
   
   <script>
-    const { ipcRenderer } = require('electron');
+    const ipcRenderer = window.electronIpc;
     // Ensure clicking this window brings it to front above other overlays
     try {
       document.addEventListener('mousedown', () => {
@@ -1884,7 +1882,7 @@ function buildLevelingSettingsSplashHtml(
     }
     
     // Custom Hotkey Management
-    let customHotkeysData = ${JSON.stringify(customHotkeys)};
+    let customHotkeysData = ${jsonForScript(customHotkeys)};
     
     function captureCustomHotkey(index) {
       const inputEl = document.getElementById('custom-hotkey-' + index);

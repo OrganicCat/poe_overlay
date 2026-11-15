@@ -8,6 +8,7 @@ import type { SettingsService } from '../services/settingsService.js';
 import type { OverlayVersion } from '../../types/overlayVersion.js';
 import type { StoredPobBuild } from '../../shared/pob/types.js';
 import { registerOverlayWindow, unregisterOverlayWindow } from './windowZManager.js';
+import { secureWebPreferences } from '../security/webPreferences.js';
 
 interface PobInfoBarParams {
   settingsService: SettingsService;
@@ -60,11 +61,7 @@ export function openPobInfoBar(params: PobInfoBarParams): void {
     alwaysOnTop: pinned,
     skipTaskbar: true,
     show: false,
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-      preload: undefined
-    }
+    webPreferences: secureWebPreferences()
   });
 
   activePobInfoBar = window;
@@ -286,7 +283,7 @@ function buildPobInfoBarHtml(pobBuild: StoredPobBuild, currentAct: number, pinne
   </div>
 
   <script>
-    const { ipcRenderer } = require('electron');
+    const ipcRenderer = window.electronIpc;
 
     let isPinned = ${pinned};
 

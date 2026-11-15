@@ -42,7 +42,9 @@ import { PoeSessionHelper } from './network/poeSession.js';
 import { ImageCacheService } from './services/imageCache.js';
 import { resolveLocalImage, resolveByNameOrSlug, getImageIndexMeta } from './services/imageResolver.js';
 import { rateLimiter } from './services/rateLimiter.js';
+import { resolveImageInRoot, localImageUrl } from './security/safePath.js';
 import { isOverlayVersion, type OverlayVersion } from '../types/overlayVersion.js';
+import { jsonForScript } from './security/htmlEscape.js';
 
 // History popout debug log path (moved logging helpers into historyPopoutHandlers)
 const historyPopoutDebugLogPath = path.join(app.getPath('userData'), 'history-popout-debug.log');
@@ -373,11 +375,13 @@ if ($hwnd -eq [System.IntPtr]::Zero) {
             
             protocol.handle('local-image', async (request) => {
                 try {
-                    const rel = request.url.replace('local-image:///', '').replace(/^\/+/, '');
+                    let rel = request.url.replace(/^local-image:\/*/i, '').split(/[?#]/, 1)[0];
+                    try { rel = decodeURIComponent(rel); } catch { /* keep raw */ }
                     const roots = resolveRoots();
                     for (const root of roots) {
-                        const filePath = path.join(root, rel);
-                        if (fs.existsSync(filePath)) {
+                        // resolveImageInRoot refuses "../" escapes and non-image files.
+                        const filePath = resolveImageInRoot(root, rel);
+                        if (filePath) {
                             const { net } = await import('electron');
                             return net.fetch(pathToFileURL(filePath).toString());
                         }
@@ -963,7 +967,7 @@ if ($hwnd -eq [System.IntPtr]::Zero) {
             if (!this.splashWindow || this.splashWindow.isDestroyed()) return;
             this.splashWindow.webContents.executeJavaScript(`(function(){ 
                 const st=document.getElementById('st'); 
-                if(st) st.textContent=${JSON.stringify(msg)}; 
+                if(st) st.textContent=${jsonForScript(msg)}; 
                 const note=document.getElementById('note');
                 if(note) note.style.opacity='0';
             })();`).catch(()=>{});
@@ -1935,9 +1939,11 @@ if ($hwnd -eq [System.IntPtr]::Zero) {
                     pushRoot(collectorTmp);
 
                     for (const root of roots) {
-                        const fullPath = path.resolve(root, normalizedLocal);
-                        if (fs.existsSync(fullPath)) {
-                            return pathToFileURL(fullPath).toString();
+                        // Confined to the image roots; served via local-image:// so the
+                        // auxiliary windows can keep webSecurity enabled.
+                        const fullPath = resolveImageInRoot(root, normalizedLocal);
+                        if (fullPath) {
+                            return localImageUrl(normalizedLocal);
                         }
                     }
                     return null;

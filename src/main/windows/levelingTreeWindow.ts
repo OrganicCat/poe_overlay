@@ -10,6 +10,7 @@ import { registerOverlayWindow, unregisterOverlayWindow, bringToFront } from '..
 import * as fs from 'fs';
 import * as path from 'path';
 import { app } from 'electron';
+import { secureWebPreferences } from '../security/webPreferences.js';
 
 const TREE_WINDOW_BOUNDS_FILE = path.join(app.getPath('userData'), 'tree-window-bounds.json');
 
@@ -604,7 +605,7 @@ function buildTreeWindowHtml(ultraMinimal: boolean = false, pinned: boolean = tr
   </div>
 
   <script>
-    const { ipcRenderer } = require('electron');
+    const ipcRenderer = window.electronIpc;
     // Ensure clicking this window brings it to front above other overlays
     try {
       document.addEventListener('mousedown', () => {
@@ -982,7 +983,7 @@ function buildTreeWindowHtml(ultraMinimal: boolean = false, pinned: boolean = tr
       }
       
       // Just notify main process (no click-through needed)
-      const { ipcRenderer } = require('electron');
+      const ipcRenderer = window.electronIpc;
       ipcRenderer.send('tree-window-toggle-minimal', isUltraMinimal);
     }
     
@@ -997,7 +998,7 @@ function buildTreeWindowHtml(ultraMinimal: boolean = false, pinned: boolean = tr
       }
       
       // Notify main process to change alwaysOnTop
-      const { ipcRenderer } = require('electron');
+      const ipcRenderer = window.electronIpc;
       ipcRenderer.send('tree-window-toggle-pinned', isPinned);
     }
 
@@ -1008,7 +1009,7 @@ function buildTreeWindowHtml(ultraMinimal: boolean = false, pinned: boolean = tr
       renderTree();
       
       // Save user's manual selection
-      const { ipcRenderer } = require('electron');
+      const ipcRenderer = window.electronIpc;
       ipcRenderer.send('tree-spec-selected', currentIndex);
     }
 
@@ -1020,7 +1021,7 @@ function buildTreeWindowHtml(ultraMinimal: boolean = false, pinned: boolean = tr
         nodeProgressionCount = null;
         renderTree();
         // Persist user's manual selection when navigating with prev button
-        const { ipcRenderer } = require('electron');
+        const ipcRenderer = window.electronIpc;
         ipcRenderer.send('tree-spec-selected', currentIndex);
       }
     }
@@ -1033,7 +1034,7 @@ function buildTreeWindowHtml(ultraMinimal: boolean = false, pinned: boolean = tr
         nodeProgressionCount = null;
         renderTree();
         // Persist user's manual selection when navigating with next button
-        const { ipcRenderer } = require('electron');
+        const ipcRenderer = window.electronIpc;
         ipcRenderer.send('tree-spec-selected', currentIndex);
       }
     }
@@ -1263,7 +1264,7 @@ function buildTreeWindowHtml(ultraMinimal: boolean = false, pinned: boolean = tr
       simplifiedViewEnabled = !simplifiedViewEnabled;
       
       // Save via IPC to main process
-      const { ipcRenderer } = require('electron');
+      const ipcRenderer = window.electronIpc;
       ipcRenderer.send('tree-window-simplified-view-changed', simplifiedViewEnabled);
       
       // Re-render tree with new setting
@@ -2002,7 +2003,7 @@ function buildTreeWindowHtml(ultraMinimal: boolean = false, pinned: boolean = tr
     // Setup node hover tooltips if setting is enabled
     async function setupNodeTooltips() {
       try {
-        const { ipcRenderer } = require('electron');
+        const ipcRenderer = window.electronIpc;
         
         // Get the setting from leveling window UI settings
         // Use local variable (not on window) and default to poe1
@@ -2167,10 +2168,7 @@ export function createPassiveTreeWindow(): BrowserWindow {
     resizable: true,
     skipTaskbar: true,
     alwaysOnTop: pinned,
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-    },
+    webPreferences: secureWebPreferences(),
   });
 
   treeWindow.setIgnoreMouseEvents(false);

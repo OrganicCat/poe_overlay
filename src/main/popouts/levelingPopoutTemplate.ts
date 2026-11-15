@@ -3,13 +3,14 @@ import gemsData from '../../data/leveling-data/gems.json';
 import questsData from '../../data/leveling-data/quests.json';
 import gemColoursData from '../../data/leveling-data/gem-colours.json';
 import type { OverlayVersion } from '../../types/overlayVersion.js';
+import { jsonForScript } from '../security/htmlEscape.js';
 
 // Leveling popout HTML with all logic embedded inline
 export function buildLevelingPopoutHtml(overlayVersion: OverlayVersion = 'poe1'): string {
   // Inject JSON data into the template
-  const gemsJSON = JSON.stringify(gemsData);
-  const questsJSON = JSON.stringify(questsData);
-  const gemColoursJSON = JSON.stringify(gemColoursData);
+  const gemsJSON = jsonForScript(gemsData);
+  const questsJSON = jsonForScript(questsData);
+  const gemColoursJSON = jsonForScript(gemColoursData);
   
   return `<!DOCTYPE html>
 <html>
@@ -448,7 +449,7 @@ export function buildLevelingPopoutHtml(overlayVersion: OverlayVersion = 'poe1')
 </div>
 </div>
 <script>
-const {ipcRenderer} = require('electron');
+const ipcRenderer = window.electronIpc;
 
 // Overlay version
 const overlayVersion = '${overlayVersion}';

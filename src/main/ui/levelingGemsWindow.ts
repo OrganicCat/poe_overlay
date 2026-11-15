@@ -6,6 +6,8 @@ import { getActiveBuild } from '../../shared/pob/buildManager.js';
 import gemsData from '../../data/leveling-data/gems.json';
 import gemColoursData from '../../data/leveling-data/gem-colours.json';
 import gemAcquisitionData from '../../data/leveling-data/gem-acquisition.json';
+import { secureWebPreferences } from '../security/webPreferences.js';
+import { jsonForScript } from '../security/htmlEscape.js';
 
 interface LevelingGemsWindowOptions {
   settingsService: SettingsService;
@@ -40,11 +42,7 @@ export function openLevelingGemsWindow(options: LevelingGemsWindowOptions): Brow
     resizable: true,
     skipTaskbar: true,
     alwaysOnTop: pinned,
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-      webSecurity: false,
-    },
+    webPreferences: secureWebPreferences(),
     // Important: avoid owned/parent windows so z-order among overlays is free on Windows
     // Parent windows force a z-order group on Win32 where children cannot rise above other top-level windows
     // which breaks click-to-front across sibling overlays. We intentionally do NOT set `parent` here.
@@ -242,10 +240,10 @@ function buildLevelingGemsWindowHtml(pobBuild: any, currentAct: number, characte
   }
 
   // Inject JSON data - escape < and > to prevent script breaking
-  const gemsJSON = JSON.stringify(gemsData).replace(/</g, '\\u003c').replace(/>/g, '\\u003e');
-  const gemColoursJSON = JSON.stringify(gemColoursData).replace(/</g, '\\u003c').replace(/>/g, '\\u003e');
-  const gemAcquisitionJSON = JSON.stringify(filteredAcquisition).replace(/</g, '\\u003c').replace(/>/g, '\\u003e');
-  const pobBuildJSON = JSON.stringify(pobBuild).replace(/</g, '\\u003c').replace(/>/g, '\\u003e');
+  const gemsJSON = jsonForScript(gemsData);
+  const gemColoursJSON = jsonForScript(gemColoursData);
+  const gemAcquisitionJSON = jsonForScript(filteredAcquisition);
+  const pobBuildJSON = jsonForScript(pobBuild);
 
   return `
 <!DOCTYPE html>
@@ -1018,9 +1016,7 @@ function buildLevelingGemsWindowHtml(pobBuild: any, currentAct: number, characte
   </div>
   
   <script>
-    const { ipcRenderer } = require('electron');
-    const path = require('path');
-    const fs = require('fs');
+    const ipcRenderer = window.electronIpc;
     // Ensure clicking this window brings it to front above other overlays
     try {
       document.addEventListener('mousedown', () => {
@@ -1819,7 +1815,7 @@ function buildLevelingGemsWindowHtml(pobBuild: any, currentAct: number, characte
           event.preventDefault();
           const wikiUrl = target.getAttribute('data-wiki-url');
           if (wikiUrl) {
-            require('electron').shell.openExternal(wikiUrl);
+            window.electronShell.openExternal(wikiUrl);
           }
         }
       });

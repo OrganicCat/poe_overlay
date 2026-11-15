@@ -1806,7 +1806,7 @@
         if (!value) return '';
         const str = String(value).trim();
         if (!str) return '';
-        if (/^data:/i.test(str) || /^https?:/i.test(str)) return str;
+        if (/^data:/i.test(str) || /^https?:/i.test(str) || /^local-image:/i.test(str)) return str;
         if (/^file:/i.test(str)) {
             const withoutScheme = str.replace(/^file:\/+/, '');
             const devUrl = toDevServerFsUrl(withoutScheme);

@@ -46,6 +46,7 @@ import type {
   TreeSpec,
   PobBuildEntry
 } from '../../shared/pob/types.js';
+import { secureWebPreferences } from '../security/webPreferences.js';
 
 export interface LevelingWindowParams {
   settingsService: SettingsService;
@@ -295,13 +296,10 @@ export class LevelingWindow {
       resizable: true,
       hasShadow: false,
       show: false,  // Don't show window automatically - only when explicitly requested
-      webPreferences: {
-        nodeIntegration: true,
-        contextIsolation: false,
+      webPreferences: secureWebPreferences({
         backgroundThrottling: false,
-        webSecurity: false,
         devTools: true,
-      },
+      }),
     });
 
     // Enable Ctrl+Shift+I to toggle DevTools (global shortcut since window doesn't have focus)

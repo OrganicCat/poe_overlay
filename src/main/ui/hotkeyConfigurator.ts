@@ -1,4 +1,5 @@
 import { BrowserWindow, screen } from 'electron';
+import { secureWebPreferences } from '../security/webPreferences.js';
 
 export interface HotkeyConfiguratorParams {
   currentKey: string;
@@ -37,10 +38,7 @@ export class HotkeyConfigurator {
       title: 'Configure Hotkey',
       backgroundColor: '#1a1a1a',
       autoHideMenuBar: true,
-      webPreferences: {
-        nodeIntegration: true,
-        contextIsolation: false
-      }
+      webPreferences: secureWebPreferences()
     });
 
     this.window.setMenu(null);
@@ -212,7 +210,7 @@ export class HotkeyConfigurator {
   </div>
 
   <script>
-    const { ipcRenderer } = require('electron');
+    const ipcRenderer = window.electronIpc;
     
     // Focus window to ensure key capture
     window.focus();

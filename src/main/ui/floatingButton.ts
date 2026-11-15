@@ -1,5 +1,6 @@
 import { BrowserWindow, screen } from 'electron';
 import { SettingsService } from '../services/settingsService.js';
+import { secureWebPreferences } from '../security/webPreferences.js';
 
 export interface FloatingButtonParams { settingsService: SettingsService; }
 
@@ -53,7 +54,7 @@ export class FloatingButton {
       focusable: false,
       resizable: false,
       hasShadow: false,
-      webPreferences: { nodeIntegration: true, contextIsolation: false, backgroundThrottling: false },
+      webPreferences: secureWebPreferences({ backgroundThrottling: false }),
     });
 
     // Set higher z-order to appear above overlay - use 'pop-up-menu' level which is above 'screen-saver'
@@ -348,7 +349,7 @@ export class FloatingButton {
     <div class="pin-button" id="pinBtn">📌</div>
   </div>
   <script>
-    const { ipcRenderer } = require('electron');
+    const ipcRenderer = window.electronIpc;
     const body = document.body;
     const mainBtn = document.getElementById('mainBtn');
     const pinBtn = document.getElementById('pinBtn');

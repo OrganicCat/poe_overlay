@@ -28,7 +28,8 @@ function sanitizeString(str: string | null | undefined, maxLength: number = 1000
   sanitized = sanitized
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
   
   return sanitized.trim();
 }
@@ -226,10 +227,12 @@ function extractSkillSets(doc: Document): SkillSet[] {
   const skillSetElements = Array.from(doc.getElementsByTagName('SkillSet'));
 
   skillSetElements.forEach((skillSetElement, index) => {
-    const title =
+    const title = sanitizeString(
       skillSetElement.getAttribute('title') ||
       skillSetElement.getAttribute('name') ||
-      `Skill Set ${index + 1}`;
+      `Skill Set ${index + 1}`,
+      200
+    );
 
     const socketGroups = extractSocketGroups(skillSetElement, title); // Pass title to extractSocketGroups
     if (socketGroups.length > 0) {
@@ -260,7 +263,7 @@ function extractSocketGroups(container: Element | null, skillSetTitle?: string):
       return;
     }
 
-    const slot = skillElement.getAttribute('slot') || '';
+    const slot = sanitizeString(skillElement.getAttribute('slot') || '', 100);
     const enabled = skillElement.getAttribute('enabled') !== 'false';
     const includeInFullDps = skillElement.getAttribute('includeInFullDPS') !== 'false';
 
@@ -332,7 +335,7 @@ function extractItemSets(doc: Document): ItemSet[] {
       const slotElements = Array.from(itemsElement.getElementsByTagName('Slot'));
 
       slotElements.forEach((slotElement) => {
-        const slotName = slotElement.getAttribute('name') || '';
+        const slotName = sanitizeString(slotElement.getAttribute('name') || '', 100);
         const itemId = parseInt(slotElement.getAttribute('itemId') || '0', 10);
 
         if (!slotName || !itemId) {
@@ -403,7 +406,9 @@ function extractItemSets(doc: Document): ItemSet[] {
 
   itemSetElements.forEach((itemSetElement) => {
     const id = parseInt(itemSetElement.getAttribute('id') || '1', 10);
-    const title = itemSetElement.getAttribute('title') || `Gear Set ${id}`;
+    // Gear set titles are rendered in the gear window; they must be escaped like every other
+    // string from an imported build (this one was missed upstream and allowed script injection).
+    const title = sanitizeString(itemSetElement.getAttribute('title') || `Gear Set ${id}`, 200);
     const useSecondWeaponSet = itemSetElement.getAttribute('useSecondWeaponSet') === 'true';
 
   const items: Record<string, Item> = {};
@@ -411,7 +416,7 @@ function extractItemSets(doc: Document): ItemSet[] {
     const slotElements = Array.from(itemSetElement.getElementsByTagName('Slot'));
 
     slotElements.forEach((slotElement) => {
-      const slotName = slotElement.getAttribute('name') || '';
+      const slotName = sanitizeString(slotElement.getAttribute('name') || '', 100);
       const itemId = parseInt(slotElement.getAttribute('itemId') || '0', 10);
 
       if (!slotName || !itemId) {
@@ -689,9 +694,10 @@ function parseItemText(id: number, rawText: string): Item {
 
   // De-duplicate mods within each section after cleaning
   const uniq = (arr: string[]) => Array.from(new Set(arr));
-  const finalImplicit = uniq(implicitMods);
-  const finalMods = uniq(mods);
-  const finalCrafted = uniq(craftedMods);
+  const clean = (arr: string[]) => uniq(arr.map((m) => sanitizeString(m, 500)).filter(Boolean));
+  const finalImplicit = clean(implicitMods);
+  const finalMods = clean(mods);
+  const finalCrafted = clean(craftedMods);
 
   return {
     id,
@@ -701,7 +707,7 @@ function parseItemText(id: number, rawText: string): Item {
     rarity: sanitizeString(rarity, 50),
     itemLevel,
     quality,
-    sockets,
+    sockets: sockets ? sanitizeString(sockets, 100) : sockets,
     variant,
     mods: finalMods.length > 0 ? finalMods : undefined,
     implicitMods: finalImplicit.length > 0 ? finalImplicit : undefined,

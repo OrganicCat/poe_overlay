@@ -1,5 +1,6 @@
 import { BrowserWindow, ipcMain, screen, app } from 'electron';
 import { isOverlayVersion, type OverlayVersion } from '../../types/overlayVersion.js';
+import { secureWebPreferences } from '../security/webPreferences.js';
 
 const SELECT_CHANNEL = 'overlay-version-select';
 const QUIT_CHANNEL = 'overlay-version-quit';
@@ -24,10 +25,7 @@ export async function showOverlayVersionPrompt(): Promise<OverlayVersion> {
       skipTaskbar: true,
       alwaysOnTop: true,
       show: false,
-      webPreferences: {
-        nodeIntegration: true,
-        contextIsolation: false
-      }
+      webPreferences: secureWebPreferences()
     });
 
     const cleanup = () => {
@@ -239,7 +237,7 @@ function buildOverlayVersionPromptHtml(): string {
 
   <script>
     (function() {
-      const { ipcRenderer } = require('electron');
+      const ipcRenderer = window.electronIpc;
       const choices = document.querySelectorAll('.choice');
       choices.forEach((choice) => {
         choice.addEventListener('click', () => {

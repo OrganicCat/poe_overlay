@@ -4,6 +4,8 @@ import type { OverlayVersion } from '../../types/overlayVersion.js';
 import type { SettingsService } from '../services/settingsService.js';
 import type { ItemSet } from '../../shared/pob/types.js';
 import { getActiveBuild } from '../../shared/pob/buildManager.js';
+import { secureWebPreferences } from '../security/webPreferences.js';
+import { jsonForScript } from '../security/htmlEscape.js';
 
 interface LevelingGearWindowOptions {
   settingsService: SettingsService;
@@ -38,11 +40,7 @@ export function openLevelingGearWindow(options: LevelingGearWindowOptions): Brow
     resizable: true,
     skipTaskbar: true,
     alwaysOnTop: pinned,
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-      webSecurity: false,
-    },
+    webPreferences: secureWebPreferences(),
     // Important: do not set `parent` so this overlay remains a top-level window.
     // Owned windows on Windows are grouped above their owner and cannot freely reorder across groups.
   });
@@ -748,7 +746,7 @@ function buildLevelingGearWindowHtml(itemSets: ItemSet[], overlayVersion: Overla
   </div>
   
   <script>
-    const { ipcRenderer } = require('electron');
+    const ipcRenderer = window.electronIpc;
     // Ensure clicking this window brings it to front above other overlays
     try {
       document.addEventListener('mousedown', () => {
@@ -758,7 +756,7 @@ function buildLevelingGearWindowHtml(itemSets: ItemSet[], overlayVersion: Overla
     
     let isUltraMinimal = ${ultraMinimal};
     let isPinned = ${pinned};
-    let allItemSets = ${JSON.stringify(itemSets)};
+    let allItemSets = ${jsonForScript(itemSets)};
     let currentSetIndex = ${currentSetIndex};
     let currentAct = 1;
     let characterLevel = 1;

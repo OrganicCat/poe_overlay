@@ -1,3 +1,4 @@
+import { jsonForScript } from '../security/htmlEscape.js';
 // Splash screen HTML template extracted from main.ts for maintainability.
 // buildSplashHtml(initialStatus, isFirstLaunch)
 //  - initialStatus: initial status message string
@@ -31,7 +32,7 @@ export function buildSplashHtml(initialStatus: string, isFirstLaunch: boolean): 
       <div class='status' id='st'></div>
       <div class='note' id='note'>${noteText}</div>
   </div>
-  <script>document.getElementById('st').textContent=${JSON.stringify(initialStatus)};</script>
+  <script>document.getElementById('st').textContent=${jsonForScript(initialStatus)};</script>
   </body></html>`;
 }
 

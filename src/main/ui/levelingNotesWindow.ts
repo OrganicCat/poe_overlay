@@ -3,6 +3,8 @@ import { registerOverlayWindow, updateOverlayWindowPinned } from './windowZManag
 import type { OverlayVersion } from '../../types/overlayVersion.js';
 import type { SettingsService } from '../services/settingsService.js';
 import { getActiveBuild } from '../../shared/pob/buildManager.js';
+import { secureWebPreferences } from '../security/webPreferences.js';
+import { jsonForScript } from '../security/htmlEscape.js';
 
 interface LevelingNotesWindowOptions {
   settingsService: SettingsService;
@@ -37,11 +39,7 @@ export function openLevelingNotesWindow(options: LevelingNotesWindowOptions): Br
     resizable: true,
     skipTaskbar: true,
     alwaysOnTop: pinned,
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-      webSecurity: false,
-    },
+    webPreferences: secureWebPreferences(),
     // Avoid `parent` relationship to keep this as a top-level window for proper z-ordering on Windows.
   });
 
@@ -474,8 +472,8 @@ function buildLevelingNotesWindowHtml(notes: string, overlayVersion: OverlayVers
   </div>
   
   <script>
-    const { ipcRenderer } = require('electron');
-    const notesSections = ${notesSections ? JSON.stringify(notesSections) : 'null'};
+    const ipcRenderer = window.electronIpc;
+    const notesSections = ${jsonForScript(notesSections || null)};
     
     // Ensure clicking this window brings it to front above other overlays
     try {

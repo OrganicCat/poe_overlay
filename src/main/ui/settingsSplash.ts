@@ -13,6 +13,8 @@ import * as https from 'https';
 import { registerOverlayWindow, unregisterOverlayWindow } from './windowZManager.js';
 import type { SettingsService } from '../services/settingsService.js';
 import { isOverlayVersion, type OverlayVersion } from '../../types/overlayVersion.js';
+import { secureWebPreferences } from '../security/webPreferences.js';
+import { jsonForScript } from '../security/htmlEscape.js';
 
 // Optional updater (will be active in packaged builds)
 let autoUpdater: any = null;
@@ -230,11 +232,7 @@ export async function showSettingsSplash(params: SettingsSplashParams): Promise<
       alwaysOnTop: true,
       skipTaskbar: true,
       show: false,
-      webPreferences: {
-        nodeIntegration: true,
-        contextIsolation: false,
-        preload: undefined
-      }
+      webPreferences: secureWebPreferences()
     });
 
     // Track this as the active settings window
@@ -1973,7 +1971,7 @@ function buildSettingsSplashHtml(
   
   <script>
     (function() {
-      const { ipcRenderer } = require('electron');
+      const ipcRenderer = window.electronIpc;
       
       // Tab switching functionality
       const tabButtons = document.querySelectorAll('.tab-button');
@@ -2103,7 +2101,7 @@ function buildSettingsSplashHtml(
       
       // Download update button
       document.getElementById('downloadUpdateBtn').addEventListener('click', () => {
-        const { shell } = require('electron');
+        const shell = window.electronShell;
         shell.openExternal('https://github.com/XileHUD/poe_overlay/releases/latest');
       });
       
@@ -2121,7 +2119,7 @@ function buildSettingsSplashHtml(
   const overlayVersionButtons = Array.from(document.querySelectorAll('[data-overlay-version]'));
   const overlayVersionSaveBtn = document.getElementById('saveOverlayVersionBtn');
   const overlayVersionStatus = document.getElementById('overlayVersionStatus');
-  let originalOverlayVersion = ${JSON.stringify(normalizedOverlayVersion)};
+  let originalOverlayVersion = ${jsonForScript(normalizedOverlayVersion)};
   let selectedOverlayVersion = originalOverlayVersion;
 
       const updateOverlayVersionUI = () => {
@@ -2180,7 +2178,7 @@ function buildSettingsSplashHtml(
       // League selection
   const leagueSelect = document.getElementById('leagueSelect');
   const saveLeagueBtn = document.getElementById('saveLeagueBtn');
-  let originalLeague = ${JSON.stringify(merchantHistoryLeague)};
+  let originalLeague = ${jsonForScript(merchantHistoryLeague)};
       
       // Set initial value
       if (leagueSelect) {
@@ -2646,7 +2644,7 @@ function buildSettingsSplashHtml(
       }
       
       // Social links in About tab
-      const { shell } = require('electron');
+      const shell = window.electronShell;
       
       const githubLink = document.getElementById('githubLink');
       const discordLink = document.getElementById('discordLink');
