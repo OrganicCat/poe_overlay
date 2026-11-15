@@ -156,7 +156,7 @@ export function createTray(params: CreateTrayParams): Tray | null {
   // GNOME/AppIndicator compatibility: use setContextMenu instead of popUpContextMenu
   // On GNOME, popUpContextMenu doesn't work and click events only trigger on double-click
   // See: https://github.com/ubuntu/gnome-shell-extension-appindicator#features
-  const isGnome = process.platform === 'linux' && process.env.XDG_CURRENT_DESKTOP === 'GNOME';
+  const isGnome = process.platform === 'linux' && /(^|:)GNOME(:|$)/i.test(process.env.XDG_CURRENT_DESKTOP || ''); // e.g. "ubuntu:GNOME"
   
   if (isGnome) {
     // On GNOME, set the context menu directly - it will appear on any click

@@ -7,18 +7,28 @@ import * as path from 'path';
  * Run through XWayland on Linux.
  *
  * Since Electron 38, apps launched in a Wayland session run as native Wayland
- * clients. Wayland doesn't let a client place its own windows or reliably keep
- * them above a fullscreen game, and global input hooks (uiohook) only see X11
+ * clients. Wayland doesn't let a client place its own windows or keep them
+ * above a fullscreen game, and global input hooks (uiohook) only see X11
  * events, so the overlay can't work there. Path of Exile under Proton/Wine is
  * an X11 window anyway.
  *
- * Set XILEHUD_WAYLAND=1 to opt out. Must be called before app 'ready'.
+ * The backend can only be chosen with the --ozone-platform command-line flag:
+ * app.commandLine.appendSwitch() from JS leaves the main process on Wayland
+ * and only switches the GPU process, which breaks rendering. So if the flag
+ * is missing, relaunch once with it. The packaged .desktop launcher already
+ * passes it, so the relaunch only happens when started some other way.
+ *
+ * Set XILEHUD_WAYLAND=1 to opt out. Returns true if the caller should stop
+ * (a relaunch is under way).
  */
-export function configureLinuxDisplay(): void {
-  if (process.platform !== 'linux') return;
-  if (process.env.XILEHUD_WAYLAND === '1') return;
-  if (app.commandLine.hasSwitch('ozone-platform')) return; // user chose explicitly
-  app.commandLine.appendSwitch('ozone-platform', 'x11');
+export function relaunchForX11IfNeeded(): boolean {
+  if (process.platform !== 'linux') return false;
+  if (process.env.XILEHUD_WAYLAND === '1') return false;
+  if (process.argv.some((arg) => arg.startsWith('--ozone-platform'))) return false;
+  if (!process.env.DISPLAY) return false; // no XWayland/X server to use
+  app.relaunch({ args: [...process.argv.slice(1), '--ozone-platform=x11'] });
+  app.exit(0);
+  return true;
 }
 
 /** Steam library roots on this machine (native, Flatpak, and extra libraries). */

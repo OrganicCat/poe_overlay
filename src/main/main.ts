@@ -44,13 +44,11 @@ import { resolveLocalImage, resolveByNameOrSlug, getImageIndexMeta } from './ser
 import { rateLimiter } from './services/rateLimiter.js';
 import { resolveImageInRoot, localImageUrl } from './security/safePath.js';
 import { installAppHardening } from './security/appHardening.js';
-import { configureLinuxDisplay } from './platform/linux.js';
 import { isOverlayVersion, type OverlayVersion } from '../types/overlayVersion.js';
 import { jsonForScript } from './security/htmlEscape.js';
 
 // Must run before any window is created.
 installAppHardening();
-configureLinuxDisplay();
 
 // History popout debug log path (moved logging helpers into historyPopoutHandlers)
 const historyPopoutDebugLogPath = path.join(app.getPath('userData'), 'history-popout-debug.log');
