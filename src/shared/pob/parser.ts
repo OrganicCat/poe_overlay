@@ -93,9 +93,15 @@ export async function parsePobCode(code: string, gameVersion: 'poe1' | 'poe2' = 
       } else if (treeVersion === '3_27') {
         lookup = nodeLookup327;
         console.log('[PoB Parser] Using 3.27 tree lookup');
-      } else {
+      } else if (treeVersion === '3_26') {
         lookup = nodeLookup326;
         console.log('[PoB Parser] Using 3.26 tree lookup');
+      } else {
+        // Newer (e.g. 3_29/3_30) or missing versions: use the latest bundled
+        // tree, the same one the tree window draws. Falling back to 3.26 here
+        // dropped every passive added since 3.26.
+        lookup = nodeLookup328;
+        console.log(`[PoB Parser] Tree version ${treeVersion || '(none)'} not bundled; using 3.28 tree lookup`);
       }
     }
 
