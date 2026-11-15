@@ -20,11 +20,14 @@ export class ClipboardMonitor extends EventEmitter {
         if (this.isMonitoring) return;
         
         this.isMonitoring = true;
-        this.lastClipboardContent = this.getClipboard();
+        void this.getClipboard().then((text) => { this.lastClipboardContent = text; });
         
         // Check clipboard every 500ms (less frequent to avoid spam)
+        let checking = false;
         this.monitorInterval = setInterval(() => {
-            this.checkClipboard();
+            if (checking) return; // async read still in flight; skip this tick
+            checking = true;
+            this.checkClipboard().finally(() => { checking = false; });
         }, 500);
         
         console.log('Clipboard monitoring started');
@@ -42,9 +45,9 @@ export class ClipboardMonitor extends EventEmitter {
         console.log('Clipboard monitoring stopped');
     }
 
-    private checkClipboard() {
+    private async checkClipboard() {
         try {
-            const currentContent = this.getClipboard();
+            const currentContent = await this.getClipboard();
             
             // Always attempt emit when content changes; if same content,
             // still emit if we recently lost focus (handled by consumer).
@@ -57,11 +60,11 @@ export class ClipboardMonitor extends EventEmitter {
         }
     }
 
-    private getClipboard(): string {
+    private async getClipboard(): Promise<string> {
         // Use Electron's clipboard API for reliability across platforms
         // This avoids sporadic PowerShell Get-Clipboard failures on Windows
         try {
-            const text = clipboard.readText();
+            const text = await clipboard.readText();
             return (text || '').trim();
         } catch (error) {
             // Extremely rare; keep silent to avoid log spam, just treat as empty

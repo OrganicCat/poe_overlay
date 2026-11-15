@@ -2076,11 +2076,11 @@ if ($hwnd -eq [System.IntPtr]::Zero) {
                 this.showTargetIndicator(cursor);
             } catch {}
 
-            previousClipboardRaw = clipboard.readText?.() ?? '';
+            previousClipboardRaw = (await clipboard.readText()) ?? '';
             const previousClipboardTrimmed = previousClipboardRaw.trim();
 
             if (this.isLikelyItemClipboardText(previousClipboardTrimmed)) {
-                try { clipboard.writeText(''); } catch (err) {
+                try { await clipboard.writeText(''); } catch (err) {
                     console.warn('[Hotkey] Failed to clear clipboard before copy', err);
                 }
             }
@@ -2181,7 +2181,7 @@ if ($hwnd -eq [System.IntPtr]::Zero) {
         } finally {
             this.armedCaptureUntil = 0;
             if (!clipboardHasNewItem) {
-                try { clipboard.writeText(previousClipboardRaw); } catch {}
+                clipboard.writeText(previousClipboardRaw).catch(() => {});
             }
         }
     }
@@ -2192,7 +2192,7 @@ if ($hwnd -eq [System.IntPtr]::Zero) {
             await new Promise<void>(resolve => setTimeout(resolve, interval));
             let raw = '';
             try {
-                raw = clipboard.readText() || '';
+                raw = (await clipboard.readText()) || '';
             } catch {
                 continue;
             }

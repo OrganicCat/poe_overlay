@@ -23,14 +23,14 @@ export async function typeInChat(command: string, pressEnter: boolean = true): P
   // Save current clipboard content
   let previousClipboard = '';
   try {
-    previousClipboard = clipboard.readText();
+    previousClipboard = await clipboard.readText();
   } catch (err) {
     console.warn('[Chat Command] Failed to read clipboard:', err);
   }
   
   try {
-    // Set command to clipboard
-    clipboard.writeText(command);
+    // Set command to clipboard (must finish before the simulated paste)
+    await clipboard.writeText(command);
     
     // No delay needed - Awakened PoE Trade fires instantly
     
@@ -56,11 +56,9 @@ export async function typeInChat(command: string, pressEnter: boolean = true): P
   } finally {
     // Restore previous clipboard after a short delay (same as Awakened: 120ms)
     setTimeout(() => {
-      try {
-        clipboard.writeText(previousClipboard);
-      } catch (err) {
+      clipboard.writeText(previousClipboard).catch((err) => {
         console.warn('[Chat Command] Failed to restore clipboard:', err);
-      }
+      });
     }, 120);
   }
 }
@@ -83,17 +81,17 @@ export async function executeLogout(): Promise<void> {
  *
  * @param regex - The regex pattern to paste into the stash search
  */
-export function typeInStashSearch(regex: string): void {
+export async function typeInStashSearch(regex: string): Promise<void> {
   // Save current clipboard content
   let previousClipboard = '';
   try {
-    previousClipboard = clipboard.readText();
+    previousClipboard = await clipboard.readText();
   } catch (err) {
     console.warn('[Chat Command] Failed to read clipboard:', err);
   }
 
   // Write regex to clipboard BEFORE any key taps
-  clipboard.writeText(regex);
+  await clipboard.writeText(regex);
 
   // Stage key taps with short delays for reliability:
   // 1) Ctrl+F opens/focuses search input
@@ -109,10 +107,8 @@ export function typeInStashSearch(regex: string): void {
 
   // Restore clipboard after a longer delay so paste always uses our regex.
   setTimeout(() => {
-    try {
-      clipboard.writeText(previousClipboard);
-    } catch (err) {
+    clipboard.writeText(previousClipboard).catch((err) => {
       console.warn('[Chat Command] Failed to restore clipboard:', err);
-    }
+    });
   }, 1800);
 }
