@@ -1177,6 +1177,24 @@ function buildTreeWindowHtml(ultraMinimal: boolean = false, pinned: boolean = tr
       }
     });
 
+    // Class start nodes (the stat-less "WITCH", "MARAUDER", ... nodes). PoB tree
+    // URLs never include them, so a build that leaves its start in two
+    // directions looks like two separate islands unless paths may pass
+    // through the start.
+    let classStartIdsCache = null;
+    let classStartIdsFor = null;
+    function getClassStartNodeIds() {
+      if (classStartIdsCache && classStartIdsFor === currentTreeData) return classStartIdsCache;
+      const ids = new Set();
+      const mainNodes = currentTreeData?.graphs?.[0]?.nodes || {};
+      for (const [id, node] of Object.entries(mainNodes)) {
+        if (id !== 'root' && node && node.k === 'Normal' && (!node.stats || node.stats.length === 0)) ids.add(String(id));
+      }
+      classStartIdsCache = ids;
+      classStartIdsFor = currentTreeData;
+      return ids;
+    }
+
     // Build adjacency map from tree graph connections for connectivity validation
     function buildAdjacencyMap() {
       const adj = new Map();
@@ -1214,6 +1232,16 @@ function buildTreeWindowHtml(ultraMinimal: boolean = false, pinned: boolean = tr
       }
       // Always include first ordered node as fallback anchor
       anchors.add(ordered[0]);
+
+      // Class starts next to the selection join its branches and anchor it.
+      // They are never in 'ordered', so they don't end up in the result.
+      for (const startId of getClassStartNodeIds()) {
+        const nbs = adj.get(startId);
+        if (nbs && [...nbs].some(nb => selectedSet.has(String(nb)))) {
+          selectedSet.add(startId);
+          anchors.add(startId);
+        }
+      }
 
       // Build connected components within the selected set
       const visited = new Set();
@@ -1358,6 +1386,9 @@ function buildTreeWindowHtml(ultraMinimal: boolean = false, pinned: boolean = tr
           if (nodeList.length === 0) return true;
           const testSet = new Set(nodeList);
           if (!testSet.has(startNode)) return false; // Start must always be included
+          // Paths may pass through the class start, which isn't in the list.
+          const passable = new Set(testSet);
+          getClassStartNodeIds().forEach(id => passable.add(id));
           
           const visited = new Set();
           const queue = [startNode];
@@ -1368,13 +1399,15 @@ function buildTreeWindowHtml(ultraMinimal: boolean = false, pinned: boolean = tr
             const neighbors = adj.get(cur) || [];
             for (const nb of neighbors) {
               const nbStr = String(nb);
-              if (testSet.has(nbStr) && !visited.has(nbStr)) {
+              if (passable.has(nbStr) && !visited.has(nbStr)) {
                 visited.add(nbStr);
                 queue.push(nbStr);
               }
             }
           }
-          return visited.size === nodeList.length;
+          let reached = 0;
+          visited.forEach(id => { if (testSet.has(id)) reached++; });
+          return reached === nodeList.length;
         };
         
         // Try to remove nodes from the end, keeping only those we need to keep
