@@ -48,7 +48,9 @@ export function buildHistoryPopoutHtml(): string {
   </div>
   <script>
     let state={items:[],selectedIndex:-1,lastRefreshAt:0,nextRefreshAt:0};
-    function escapeHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+    function escapeHtml(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+    // Class names built from API fields (rarity, currency) keep only safe characters.
+    function cssToken(s){return String(s??'').replace(/[^a-zA-Z0-9_-]/g,'');}
     function normalizeCurrency(c){const s=String(c||'').toLowerCase();if(s.includes('divine'))return'divine';if(s.includes('exalt'))return'exalted';if(s.includes('annul'))return'annul';if(s.includes('chaos'))return'chaos';if(s.includes('regal'))return'regal';return c;}
     function toRelativeTime(ts){
       let n = Number(ts);
@@ -77,16 +79,16 @@ export function buildHistoryPopoutHtml(): string {
         const name=(it&&it.item&& (it.item.name||it.item.typeLine||it.item.baseType))||'Item';
         const amount=(it&& (it.price&&it.price.amount || it.amount)) ?? '?';
         const currency=normalizeCurrency((it&& (it.price&&it.price.currency || it.currency))||'');
-        const curClass=currency?('currency-'+currency):'';
+        const curClass=currency?('currency-'+cssToken(currency)):'';
         const currencyDisplay=currency?(currency.charAt(0).toUpperCase()+currency.slice(1)):'';
         const time=toRelativeTime(it && it.ts ? it.ts : (it && (it.time||it.listedAt||it.date||0))); // canonical ts provided by renderer
-        const rarity=(it&&it.item&&it.item.rarity||'').toLowerCase();
+        const rarity=cssToken(it&&it.item&&it.item.rarity||'').toLowerCase();
         const rarityClass=rarity?('rarity-'+rarity):'';
         const hasPrice = amount !== '?' && currency;
         return '<div class="history-row '+(idx===state.selectedIndex?'selected':'')+'" data-idx="'+idx+'">'
           +'<div class="row-header">'
             +'<div class="item-name '+rarityClass+'">'+escapeHtml(name)+'</div>'
-            +(hasPrice ? '<span class="price-badge '+curClass+'"><span class="amount">'+amount+'</span>'+currencyDisplay+'</span>' : '')
+            +(hasPrice ? '<span class="price-badge '+curClass+'"><span class="amount">'+escapeHtml(amount)+'</span>'+escapeHtml(currencyDisplay)+'</span>' : '')
           +'</div>'
           +'<div class="row-meta"><span>'+time+' ago</span></div>'
         +'</div>';
@@ -107,11 +109,11 @@ export function buildHistoryPopoutHtml(): string {
       const it=state.items[i];
       const item=(it&&it.item)||{};
       const name=item.name||item.typeLine||item.baseType||'Item';
-      const rarity=(item.rarity||'normal').toLowerCase();
+      const rarity=cssToken(item.rarity||'normal').toLowerCase();
       const rarityClass='rarity-'+rarity;
       let html="<div style='font-weight:600;font-size:12px;margin-bottom:6px;' class='"+rarityClass+"'>"+escapeHtml(name)+"</div>";
       if(item.baseType && item.baseType!==name) html+="<div style='color:#999;font-size:10px;margin-bottom:4px;'>"+escapeHtml(item.baseType)+"</div>";
-      if(item.ilvl) html+="<div style='font-size:10px;color:#888;'>Item Level: "+item.ilvl+"</div>";
+      if(item.ilvl) html+="<div style='font-size:10px;color:#888;'>Item Level: "+escapeHtml(item.ilvl)+"</div>";
       if(Array.isArray(item.implicitMods) && item.implicitMods.length){
         html+="<div style='margin-top:6px;font-size:10px;color:#88f;'>"+item.implicitMods.map(m=>escapeHtml(m)).join('<br>')+"</div>";
       }

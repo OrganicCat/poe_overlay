@@ -1092,7 +1092,7 @@ function buildLevelingGearWindowHtml(itemSets: ItemSet[], overlayVersion: Overla
     function highlightNumbers(text) {
       // Match numbers: optional +/-, one or more digits, optional decimal part, optional %
       // Using lookahead/lookbehind to ensure we don't match partial words
-      return text.replace(/(^|[^a-zA-Z])([+\-]?\d+(?:\.\d+)?%?)(?=[^a-zA-Z]|$)/g, (match, prefix, number) => {
+      return text.replace(/(^|[^a-zA-Z])([+\\-]?\\d+(?:\\.\\d+)?%?)(?=[^a-zA-Z]|$)/g, (match, prefix, number) => {
         return \`\${prefix}<span style="color: #6ba3ff; font-weight: 600;">\${number}</span>\`;
       });
     }

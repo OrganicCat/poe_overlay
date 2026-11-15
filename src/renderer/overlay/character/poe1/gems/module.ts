@@ -1,5 +1,5 @@
 // PoE1 Gems module with list and detail views
-import { applyFilterChipChrome, type ChipChrome } from "../../../utils";
+import { applyFilterChipChrome, escapeHtml, type ChipChrome } from "../../../utils";
 import { bindImageFallback } from "../../../crafting/utils/imageFallback";
 import { TRANSPARENT_PLACEHOLDER } from "../../../crafting/utils/imagePlaceholder";
 import { resolveLocalImage } from "../../../crafting/utils/localImage";
@@ -105,7 +105,7 @@ function showLoadingOverlay(message = 'Loading...') {
         border-radius: 50%;
         animation: spin 1s linear infinite;
       '></div>
-      <div style='color: var(--text-secondary); font-size: 14px;'>${message}</div>
+      <div style='color: var(--text-secondary); font-size: 14px;'>${escapeHtml(message)}</div>
     </div>
     <style>
       @keyframes spin {
@@ -717,7 +717,7 @@ function renderDetail(): void {
         <a href='${wikiUrl}' 
            target='_blank' 
            style='color:#4A9EFF;text-decoration:none;font-size:12px;display:inline-flex;align-items:center;gap:6px;'
-           onclick='event.preventDefault();require("electron").shell.openExternal("${wikiUrl}");'>
+           onclick='event.preventDefault();window.electronAPI&&window.electronAPI.openExternal(this.href);'>
           <span style='font-size:14px;'>🌐</span>
           <span>View ${gemName} on PoE Wiki</span>
         </a>

@@ -8,7 +8,7 @@
 
 import { historyState } from './historyData';
 import { toRelativeTime } from './historyList';
-import { normalizeCurrency, escapeHtml } from '../utils';
+import { normalizeCurrency, escapeHtml, cssToken } from '../utils';
 import { historyVisible } from './historyView';
 
 interface VirtualScrollState {
@@ -179,7 +179,8 @@ function renderHistoryRow(displayItem: any, idx: number): string {
     amountDisplay = hasPrice ? String(numericAmount) : "?";
   }
   
-  const curClass = hasPrice ? `currency-${currency}` : "";
+  // currency falls back to the raw API string when it isn't a known one
+  const curClass = hasPrice ? `currency-${cssToken(currency)}` : "";
   const currencyDisplay = currency ? currency.charAt(0).toUpperCase() + currency.slice(1) : "";
   const rawName = it?.item?.name || it?.item?.typeLine || it?.item?.baseType || "Item";
   
@@ -212,8 +213,8 @@ function renderHistoryRow(displayItem: any, idx: number): string {
         ${namePrefix}<div class="history-row-title" title="${escapeHtml(rawName)}">${escapeHtml(name)}</div>
       </div>
       <div style="display:flex; align-items:center; gap:8px; flex-shrink:0; white-space:nowrap;">
-        ${hasPrice ? `<span class="price-badge ${curClass}" style="white-space:nowrap;"><span class="amount">${amountDisplay}</span>${currencyDisplay}</span>` : ''}
-        <div style="color:var(--text-muted); font-size:11px; white-space:nowrap;">${time}</div>
+        ${hasPrice ? `<span class="price-badge ${curClass}" style="white-space:nowrap;"><span class="amount">${escapeHtml(amountDisplay)}</span>${escapeHtml(currencyDisplay)}</span>` : ''}
+        <div style="color:var(--text-muted); font-size:11px; white-space:nowrap;">${escapeHtml(time)}</div>
       </div>
     </div>
     <div style="color:var(--text-secondary);"></div>

@@ -19,7 +19,7 @@
     "dist": "npm run build && electron-builder",
     "dist:unsigned": "cross-env WIN_CODESIGN=skip npm run build && electron-builder",
     "publish:github": "npm run build && electron-builder --publish always",
-    "dist:linux": "npm run build && electron-builder --linux AppImage"
+    "dist:linux": "npm run build && electron-builder --linux"
   },
   "keywords": [
     "poe2",
@@ -84,7 +84,7 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "XileHUD",
+        "owner": "OrganicCat",
         "repo": "poe_overlay",
         "private": false
       }
@@ -119,15 +119,28 @@
     "linux": {
       "icon": "xilehud.png",
       "category": "Game",
-      "artifactName": "XileHUD-${version}.${ext}",
+      "maintainer": "XileHUD",
+      "synopsis": "Path of Exile overlay",
+      "description": "XileHUD overlay for Path of Exile 1 and 2.",
+      "artifactName": "XileHUD-${version}-${arch}.${ext}",
       "target": [
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        },
         {
           "target": "AppImage",
           "arch": [
             "x64"
           ]
         }
-      ]
-    }
-  }
+      ],
+      "executableName": "xilehud",
+      "syncDesktopName": true
+    },
+    "npmRebuild": false
+  },
+  "desktopName": "xilehud.desktop"
 }

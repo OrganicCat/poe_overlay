@@ -1117,7 +1117,7 @@ function buildLevelingGemsWindowHtml(pobBuild: any, currentAct: number, characte
     function computeIsSupport(gem) {
       const gemName = (gem.nameSpec || gem.gemId || '').trim();
       const fromPob = gem.supportGem === true || gem.isSupport === true;
-      const nameHints = /^Support:\s*/.test(gemName) || /\s+Support$/i.test(gemName);
+      const nameHints = /^Support:\\s*/.test(gemName) || /\\s+Support$/i.test(gemName);
       const skillIdHints = typeof gem.skillId === 'string' && /support/i.test(gem.skillId);
       let dbHints = false;
       try {
@@ -1277,7 +1277,7 @@ function buildLevelingGemsWindowHtml(pobBuild: any, currentAct: number, characte
     }
 
     function resolveAcquisitionEntry(rawName, isSupport) {
-      const baseName = (rawName || '').replace(/^Support:\s*/, '').trim();
+      const baseName = (rawName || '').replace(/^Support:\\s*/, '').trim();
       const candidates = [];
       if (baseName) candidates.push(baseName);
       if (isSupport) {

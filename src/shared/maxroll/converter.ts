@@ -6,6 +6,7 @@
 
 import type { MaxrollBuild, MaxrollSkillStep, MaxrollItemSetup } from './parser.js';
 import type { StoredPobBuild, TreeSpec, SkillSet, GemSocketGroup, GemInfo, GemRequirement, ItemSet, Item } from '../pob/types.js';
+import { encodeBuildStrings } from '../pob/encodeBuildStrings.js';
 
 interface PassiveSnapshot {
   added: string[];
@@ -54,7 +55,9 @@ export async function convertMaxrollToPobBuild(build: MaxrollBuild): Promise<Sto
       })
     : undefined;
 
-  return {
+  // Page text is raw (the guide parser decodes &lt; back to <); encode it the
+  // way the PoB parser does before it reaches any window template.
+  return encodeBuildStrings<StoredPobBuild>({
     code: `maxroll:${build.url || build.title}`,
     className: build.className || 'Unknown',
     ascendancyName: build.ascendancyName || '',
@@ -74,7 +77,7 @@ export async function convertMaxrollToPobBuild(build: MaxrollBuild): Promise<Sto
       : 'No notes available',
     notesSections,
     buildSource: 'maxroll',
-  };
+  });
 }
 
 function formatCharacterName(build: MaxrollBuild): string {

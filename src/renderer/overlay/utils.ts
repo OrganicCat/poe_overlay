@@ -137,6 +137,12 @@ export function escapeHtml(str: any): string {
     .replace(/'/g, '&#39;');
 }
 
+/** Reduce a string to characters that are safe inside a class attribute. */
+export function cssToken(str: any): string {
+  if (str == null) return '';
+  return String(str).replace(/[^a-zA-Z0-9_-]/g, '');
+}
+
 // Normalize currency labels to canonical keys used across filters/totals/UI
 export function normalizeCurrency(c: any): string {
   const raw = (c || '').toString().toLowerCase().trim();

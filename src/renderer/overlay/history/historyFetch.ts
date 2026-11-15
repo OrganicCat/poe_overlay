@@ -21,6 +21,7 @@ import { recomputeChartSeriesFromStore, drawHistoryChart, updateHistoryChartFrom
 import { getLeaguePreference, setLeaguePreference, showLeaguePrompt, formatLeagueLabel } from './historyLeague';
 import { POE1_LEAGUE_ENDED, POE2_LEAGUE_ENDED, LEAGUE_ENDED_MESSAGE, LEAGUE_ENDED_TOOLTIP } from '../../../shared/leagueStatus';
 import { groupHistoryEntries, expandGroupsForDisplay } from './historyGrouping';
+import { escapeHtml } from '../utils';
 
 function isPoe1Mode(): boolean {
   try {
@@ -436,13 +437,13 @@ export async function refreshHistory(
 
       if (!hasExistingEntries) {
         (histList as HTMLElement).innerHTML =
-          `<div class="no-mods" style="padding:8px;">We checked ${leagueLabel} but there are no merchant trades yet.<br/><br/>` +
+          `<div class="no-mods" style="padding:8px;">We checked ${escapeHtml(leagueLabel)} but there are no merchant trades yet.<br/><br/>` +
           `This is normal at league start or right after logging in. We'll keep auto-refreshing in the background and update as soon as data appears.` +
           `<br/><br/>If you play in a different league (Softcore vs Hardcore), open <strong>Settings</strong> (gear icon) and switch it there.</div>`;
         showInfoBadge(`No trades returned for ${leagueLabel} yet. We'll keep checking automatically.`);
       } else {
         (histList as HTMLElement).innerHTML =
-          `<div class="no-mods" style="padding:8px;">No history returned for ${leagueLabel}.<br/><br/>` +
+          `<div class="no-mods" style="padding:8px;">No history returned for ${escapeHtml(leagueLabel)}.<br/><br/>` +
           `This usually means the selected league doesn't match your character (Softcore vs Hardcore).` +
           `<br/><br/>Pick the correct league in <strong>Settings</strong> (top-left gear icon) to keep data accurate.</div>`;
         showInfoBadge(`No trades found for ${leagueLabel}. Double-check your league choice; we'll keep auto-refreshing just in case.`);

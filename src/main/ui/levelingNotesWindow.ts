@@ -443,7 +443,7 @@ function buildLevelingNotesWindowHtml(notes: string, overlayVersion: OverlayVers
   <div class="header">
     <div class="header-title">
       <h1>📝 Notes</h1>
-      <div class="header-subtitle">${characterName || ascendancy || className}</div>
+      <div class="header-subtitle">${toSafeText(characterName || ascendancy || className)}</div>
     </div>
     <div class="header-controls">
       <div class="pin-btn active" onclick="togglePinned()" id="pinBtn" title="Toggle Always On Top">📌</div>
@@ -456,7 +456,7 @@ function buildLevelingNotesWindowHtml(notes: string, overlayVersion: OverlayVers
   <div class="section-selector-container">
     <select id="sectionSelector" onchange="changeSection(this.value)" class="section-selector">
       ${notesSections.map((section: any, idx: number) => `
-        <option value="${idx}" ${idx === 0 ? 'selected' : ''}>${section.title}</option>
+        <option value="${idx}" ${idx === 0 ? 'selected' : ''}>${toSafeText(section.title)}</option>
       `).join('')}
     </select>
   </div>
@@ -552,6 +552,17 @@ function buildLevelingNotesWindowHtml(notes: string, overlayVersion: OverlayVers
       div.textContent = text;
       return div.innerHTML;
     }
+
+    // Build text arrives HTML-encoded (see pob/parser.ts sanitizeString), so
+    // decode it first and escape once, the same as the initial render.
+    function decodeHtmlEntities(text) {
+      return String(text == null ? '' : text)
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#0?39;/g, "'")
+        .replace(/&amp;/g, '&');
+    }
     
     function linkifyText(text) {
       // Detect URLs and wrap them in <a> tags
@@ -561,7 +572,7 @@ function buildLevelingNotesWindowHtml(notes: string, overlayVersion: OverlayVers
     
     function parsePobNotesInBrowser(text) {
       // First escape HTML
-      let escaped = escapeHtml(text);
+      let escaped = escapeHtml(decodeHtmlEntities(text));
       
       // PoB preset colors
       const presetColors = {
@@ -639,11 +650,20 @@ function escapeHtml(text: string): string {
 
 function decodeHtmlEntities(text: string): string {
   return text
-    .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
-    .replace(/&#0?39;/g, "'");
+    .replace(/&#0?39;/g, "'")
+    .replace(/&amp;/g, '&');
+}
+
+/**
+ * Escape build text for the template. Builds from PoB (and new Maxroll and
+ * Mobalytics imports) are already entity-encoded, while older stored imports
+ * may be raw, so normalize by decoding first and escaping once.
+ */
+function toSafeText(value: unknown): string {
+  return escapeHtml(decodeHtmlEntities(String(value ?? '')));
 }
 
 function linkifyText(text: string): string {
@@ -654,11 +674,16 @@ function linkifyText(text: string): string {
 
 function parsePobNotes(text: string): string {
   // Check if text contains HTML formatting (from Maxroll)
-  const hasHtmlFormatting = /<[bi]>|<code>|<\/[bi]>|<\/code>/.test(text);
+  // Imported text is entity-encoded now, so look for the tags after decoding.
+  const hasHtmlFormatting = /<[bi]>|<code>|<\/[bi]>|<\/code>/.test(decodeHtmlEntities(text));
   
   if (hasHtmlFormatting) {
-    // For Maxroll notes with HTML formatting, just linkify and preserve line breaks
-    let formatted = text.replace(/\n/g, '<br>');
+    // For Maxroll notes with HTML formatting, preserve line breaks and the
+    // simple <b>/<i>/<code> tags, but escape everything else. This text comes
+    // from a website, so it must not reach innerHTML unescaped.
+    let formatted = toSafeText(text)
+      .replace(/&lt;(\/?)(b|i|code)&gt;/g, '<$1$2>')
+      .replace(/\n/g, '<br>');
     // Linkify URLs
     formatted = linkifyText(formatted);
     return formatted;

@@ -10,9 +10,13 @@ export interface HistoryPopoutDeps {
   logPath: string;
 }
 
+const MAX_DEBUG_LOG_BYTES = 1024 * 1024;
+
 function appendDebug(logPath: string, msg: string) {
   try {
-    const line = `[${new Date().toISOString()}] ${msg}\n`;
+    // Renderers can write here, so cap message length and total file size.
+    try { if (fs.statSync(logPath).size > MAX_DEBUG_LOG_BYTES) fs.writeFileSync(logPath, ''); } catch { /* new file */ }
+    const line = `[${new Date().toISOString()}] ${String(msg).slice(0, 2000)}\n`;
     fs.appendFileSync(logPath, line);
     console.log('[HISTORY-POPOUT]', msg);
   } catch {}

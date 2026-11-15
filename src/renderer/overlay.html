@@ -4629,7 +4629,7 @@ function switchCategory(){
     }).catch(err=>{
         console.error('switchCategory error', err);
         const content=document.getElementById('content');
-        if(content) content.innerHTML=`<div class="no-mods" style="color:var(--accent-red);">Failed to load category (${err?.message||'error'})</div>`;
+        if(content) content.innerHTML=`<div class="no-mods" style="color:var(--accent-red);">Failed to load category (${String(err?.message||'error').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')})</div>`;
         switchCategoryLocked = false; // Unlock after error
     });
 }

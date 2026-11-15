@@ -2,7 +2,9 @@ import { BrowserWindow, screen, ipcMain, globalShortcut } from 'electron';
 import { SettingsService, type CustomHotkey } from '../services/settingsService.js';
 import { buildLevelingPopoutHtml } from '../popouts/levelingPopoutTemplate.js';
 import { registerOverlayWindow, unregisterOverlayWindow, bringToFront } from './windowZManager.js';
-import { openLevelingSettingsSplash } from './levelingSettingsSplash.js';
+import { openLevelingSettingsSplash, isLevelingSettingsSender } from './levelingSettingsSplash.js';
+import { sanitizeCustomHotkeys, isSafeTypingHotkey } from '../security/typingGuards.js';
+import { encodeBuildStrings, encodeHtmlText } from '../../shared/pob/encodeBuildStrings.js';
 import { openPobInfoBar, closePobInfoBar, updatePobInfoBar, isPobInfoBarOpen } from './pobInfoBar.js';
 import { openLevelingGemsWindow, updateLevelingGemsWindow, updateLevelingGemsWindowBuild, updateLevelingGemsWindowCharacterLevel, closeLevelingGemsWindow, isGemsWindowOpen } from './levelingGemsWindow.js';
 import { openLevelingNotesWindow, updateNotesWindow, closeNotesWindow, isNotesWindowOpen } from './levelingNotesWindow.js';
@@ -47,6 +49,8 @@ import type {
   PobBuildEntry
 } from '../../shared/pob/types.js';
 import { secureWebPreferences } from '../security/webPreferences.js';
+import { findPoeProcessDirsLinux, getLinuxClientTxtCandidates, getSteamLibraryRoots } from '../platform/linux.js';
+import os from 'os';
 
 export interface LevelingWindowParams {
   settingsService: SettingsService;
@@ -997,6 +1001,13 @@ export class LevelingWindow {
 
     // Handle settings updates from settings splash
     ipcMain.on('leveling-settings-update', (event, updates: any) => {
+      // Custom hotkeys have their own validated channel (leveling-custom-hotkeys-update).
+      if (updates && typeof updates === 'object') {
+        updates = { ...updates };
+        delete updates.customHotkeys;
+      } else {
+        return;
+      }
       try { console.log('[LevelingWindow] settings-update incoming:', updates); } catch {}
       this.settingsService.update(this.getLevelingWindowKey(), (current: any) => {
         const updated: any = { ...(current || {}) };
@@ -1033,7 +1044,13 @@ export class LevelingWindow {
     // Handle auto gem regex result from renderer.
     // Guard against duplicate registrations (setup may be called more than once).
     if (!ipcMain.listenerCount('auto-gem-regex-result')) {
-      ipcMain.on('auto-gem-regex-result', (_event, rawRegex: string) => {
+      ipcMain.on('auto-gem-regex-result', (event, rawRegex: string) => {
+        // Only paste in direct response to the user pressing the hotkey, and
+        // only from the leveling window that the request was sent to.
+        const requestedAt = this.autoGemRegexRequestedAt;
+        this.autoGemRegexRequestedAt = 0;
+        if (!requestedAt || Date.now() - requestedAt > 3000) return;
+        if (!this.window || this.window.isDestroyed() || event.sender !== this.window.webContents) return;
         const incoming = String(rawRegex || '').trim();
         if (!incoming) return;
 
@@ -1077,7 +1094,14 @@ export class LevelingWindow {
     });
 
     // Handle custom hotkeys update
-    ipcMain.on('leveling-custom-hotkeys-update', (event, customHotkeys: CustomHotkey[]) => {
+    ipcMain.on('leveling-custom-hotkeys-update', (event, rawCustomHotkeys: unknown) => {
+      // These hotkeys type text into the focused window, so only the leveling
+      // settings window may change them.
+      if (!isLevelingSettingsSender(event.sender)) {
+        console.warn('[LevelingWindow] Ignored custom hotkey update from an unexpected window');
+        return;
+      }
+      const customHotkeys: CustomHotkey[] = sanitizeCustomHotkeys(rawCustomHotkeys);
       this.settingsService.update(this.getLevelingWindowKey(), (c) => ({
         ...c,
         customHotkeys
@@ -1479,47 +1503,19 @@ export class LevelingWindow {
         }
       }
 
-      // Fall back to scanning common locations
-      const driveLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(letter => {
-        try {
-          return fs.existsSync(letter + ':\\');
-        } catch {
-          return false;
-        }
-      });
-
-      // Different folder names for POE1 vs POE2
-      const gameFolders = this.overlayVersion === 'poe1' 
-        ? ['Path of Exile', 'Path of Exile 1']
-        : ['Path of Exile 2', 'Path of Exile II', 'PathOfExile2'];
-
-      const relativePaths: string[] = [];
-      for (const gameFolder of gameFolders) {
-        relativePaths.push(
-          `Program Files (x86)\\Steam\\steamapps\\common\\${gameFolder}\\logs\\Client.txt`,
-          `Program Files\\Steam\\steamapps\\common\\${gameFolder}\\logs\\Client.txt`,
-          `Steam\\steamapps\\common\\${gameFolder}\\logs\\Client.txt`,
-          `SteamLibrary\\steamapps\\common\\${gameFolder}\\logs\\Client.txt`,
-          `Program Files (x86)\\Grinding Gear Games\\${gameFolder}\\logs\\Client.txt`,
-          `Grinding Gear Games\\${gameFolder}\\logs\\Client.txt`
-        );
-      }
-
-      for (const drive of driveLetters) {
-        for (const rel of relativePaths) {
-          const testPath = path.join(drive + ':\\', rel);
-          if (fs.existsSync(testPath)) {
-            // Validate the path matches the current version
-            const testDir = path.dirname(path.dirname(testPath)); // Go up from logs/Client.txt to game root
-            if (this.isPathValidForVersion(testDir)) {
-              this.settingsService.set(this.getClientTxtPathKey(), testPath);
-              this.settingsService.set(this.getClientTxtAutoDetectedKey(), true);
-              this.settingsService.set(this.getClientTxtLastCheckedKey(), Date.now());
-              console.log(`[LevelingWindow] Found ${this.overlayVersion.toUpperCase()} Client.txt via path scanning`);
-              return { success: true, path: testPath };
-            } else {
-              console.log(`[LevelingWindow] Rejected path (wrong version):`, testPath);
-            }
+      // Fall back to scanning common install locations (Windows drives, or Steam/Wine on Linux)
+      for (const testPath of this.getClientTxtScanCandidates()) {
+        if (fs.existsSync(testPath)) {
+          // Validate the path matches the current version
+          const testDir = path.dirname(path.dirname(testPath)); // Go up from logs/Client.txt to game root
+          if (this.isPathValidForVersion(testDir)) {
+            this.settingsService.set(this.getClientTxtPathKey(), testPath);
+            this.settingsService.set(this.getClientTxtAutoDetectedKey(), true);
+            this.settingsService.set(this.getClientTxtLastCheckedKey(), Date.now());
+            console.log(`[LevelingWindow] Found ${this.overlayVersion.toUpperCase()} Client.txt via path scanning`);
+            return { success: true, path: testPath };
+          } else {
+            console.log(`[LevelingWindow] Rejected path (wrong version):`, testPath);
           }
         }
       }
@@ -1533,7 +1529,9 @@ export class LevelingWindow {
       const { dialog } = await import('electron');
       const result = await dialog.showOpenDialog({
         title: `Select ${this.overlayVersion.toUpperCase()} Client.txt`,
-        defaultPath: 'C:\\Program Files (x86)',
+        defaultPath: process.platform === 'win32'
+          ? 'C:\\Program Files (x86)'
+          : (getSteamLibraryRoots().map((root) => path.join(root, 'steamapps', 'common')).find((dir) => fs.existsSync(dir)) || os.homedir()),
         filters: [
           { name: 'Text Files', extensions: ['txt'] },
           { name: 'All Files', extensions: ['*'] }
@@ -1597,6 +1595,14 @@ export class LevelingWindow {
           return { success: false, error: `${this.overlayVersion.toUpperCase()} Client.txt file not found at configured path` };
         }
 
+        // This empties a file, so make sure it really is the game's log.
+        const isClientLog = path.basename(clientPath).toLowerCase() === 'client.txt'
+          && path.basename(path.dirname(clientPath)).toLowerCase() === 'logs'
+          && fs.statSync(clientPath).isFile();
+        if (!isClientLog) {
+          return { success: false, error: 'Configured path is not a logs/Client.txt file' };
+        }
+
         // Clear the file by writing an empty string
         fs.writeFileSync(clientPath, '', 'utf8');
         return { success: true };
@@ -1630,6 +1636,7 @@ export class LevelingWindow {
     // to ensure it only runs when the leveling window is actually open
   }
 
+  private autoGemRegexRequestedAt = 0;
   private clientTxtWatcher: fs.FSWatcher | null = null;
   private clientTxtPath: string | null = null;
   private lastFilePosition: number = 0;
@@ -1639,6 +1646,13 @@ export class LevelingWindow {
    * Try to find the Path of Exile installation directory by looking for running processes
    */
   private findPoeProcessPath(): string | null {
+    if (process.platform === 'linux') {
+      for (const dir of findPoeProcessDirsLinux()) {
+        if (this.isPathValidForVersion(dir)) return dir;
+      }
+      return null;
+    }
+    if (process.platform !== 'win32') return null;
     try {
       // Use PowerShell to get process path (more reliable than wmic on modern Windows)
       const command = `powershell -Command "Get-Process | Where-Object {$_.ProcessName -like '*PathOfExile*'} | Select-Object -ExpandProperty Path"`;
@@ -1667,6 +1681,41 @@ export class LevelingWindow {
       console.log('[LevelingWindow] Could not detect running POE process:', error);
     }
     return null;
+  }
+
+  /**
+   * Full Client.txt paths to try when auto-detecting, for the current platform.
+   */
+  private getClientTxtScanCandidates(): string[] {
+    // Different folder names for POE1 vs POE2
+    const gameFolders = this.overlayVersion === 'poe1'
+      ? ['Path of Exile', 'Path of Exile 1']
+      : ['Path of Exile 2', 'Path of Exile II', 'PathOfExile2'];
+
+    if (process.platform === 'linux') {
+      return gameFolders.flatMap((folder) => getLinuxClientTxtCandidates(folder));
+    }
+    if (process.platform !== 'win32') return [];
+
+    const driveLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(letter => {
+      try {
+        return fs.existsSync(letter + ':\\');
+      } catch {
+        return false;
+      }
+    });
+    const relativePaths: string[] = [];
+    for (const gameFolder of gameFolders) {
+      relativePaths.push(
+        `Program Files (x86)\\Steam\\steamapps\\common\\${gameFolder}\\logs\\Client.txt`,
+        `Program Files\\Steam\\steamapps\\common\\${gameFolder}\\logs\\Client.txt`,
+        `Steam\\steamapps\\common\\${gameFolder}\\logs\\Client.txt`,
+        `SteamLibrary\\steamapps\\common\\${gameFolder}\\logs\\Client.txt`,
+        `Program Files (x86)\\Grinding Gear Games\\${gameFolder}\\logs\\Client.txt`,
+        `Grinding Gear Games\\${gameFolder}\\logs\\Client.txt`
+      );
+    }
+    return driveLetters.flatMap((drive) => relativePaths.map((rel) => path.join(drive + ':\\', rel)));
   }
 
   /**
@@ -1755,47 +1804,19 @@ export class LevelingWindow {
       }
     }
 
-    // Fall back to scanning common locations
-    const driveLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(letter => {
-      try {
-        return fs.existsSync(letter + ':\\');
-      } catch {
-        return false;
-      }
-    });
-
-    // Different folder names for POE1 vs POE2
-    const gameFolders = this.overlayVersion === 'poe1' 
-      ? ['Path of Exile', 'Path of Exile 1']
-      : ['Path of Exile 2', 'Path of Exile II', 'PathOfExile2'];
-
-    const relativePaths: string[] = [];
-    for (const gameFolder of gameFolders) {
-      relativePaths.push(
-        `Program Files (x86)\\Steam\\steamapps\\common\\${gameFolder}\\logs\\Client.txt`,
-        `Program Files\\Steam\\steamapps\\common\\${gameFolder}\\logs\\Client.txt`,
-        `Steam\\steamapps\\common\\${gameFolder}\\logs\\Client.txt`,
-        `SteamLibrary\\steamapps\\common\\${gameFolder}\\logs\\Client.txt`,
-        `Program Files (x86)\\Grinding Gear Games\\${gameFolder}\\logs\\Client.txt`,
-        `Grinding Gear Games\\${gameFolder}\\logs\\Client.txt`
-      );
-    }
-
-    for (const drive of driveLetters) {
-      for (const rel of relativePaths) {
-        const testPath = path.join(drive + ':\\', rel);
-        if (fs.existsSync(testPath)) {
-          // Validate the path matches the current version
-          const testDir = path.dirname(path.dirname(testPath)); // Go up from logs/Client.txt to game root
-          if (this.isPathValidForVersion(testDir)) {
-            this.settingsService.set(this.getClientTxtPathKey(), testPath);
-            this.settingsService.set(this.getClientTxtAutoDetectedKey(), true);
-            this.settingsService.set(this.getClientTxtLastCheckedKey(), Date.now());
-            console.log(`[LevelingWindow] Auto-detected ${this.overlayVersion.toUpperCase()} Client.txt via path scanning:`, testPath);
-            return;
-          } else {
-            console.log(`[LevelingWindow] Rejected path (wrong version):`, testPath);
-          }
+    // Fall back to scanning common install locations (Windows drives, or Steam/Wine on Linux)
+    for (const testPath of this.getClientTxtScanCandidates()) {
+      if (fs.existsSync(testPath)) {
+        // Validate the path matches the current version
+        const testDir = path.dirname(path.dirname(testPath)); // Go up from logs/Client.txt to game root
+        if (this.isPathValidForVersion(testDir)) {
+          this.settingsService.set(this.getClientTxtPathKey(), testPath);
+          this.settingsService.set(this.getClientTxtAutoDetectedKey(), true);
+          this.settingsService.set(this.getClientTxtLastCheckedKey(), Date.now());
+          console.log(`[LevelingWindow] Auto-detected ${this.overlayVersion.toUpperCase()} Client.txt via path scanning:`, testPath);
+          return;
+        } else {
+          console.log(`[LevelingWindow] Rejected path (wrong version):`, testPath);
         }
       }
     }
@@ -2088,6 +2109,30 @@ export class LevelingWindow {
   private getPobBuildsList(): PobBuildsList {
     const saved = this.settingsService.get(this.getLevelingWindowKey()) as any;
     
+    // One-time fix for Maxroll/Mobalytics builds saved before their text was
+    // HTML-encoded on import (see shared/pob/encodeBuildStrings.ts). Builds
+    // imported from now on are already encoded, so this must only run once.
+    if (saved && !saved.webImportsHtmlEncoded) {
+      const list = saved.pobBuilds as PobBuildsList | undefined;
+      let migratedList = list;
+      if (list && Array.isArray(list.builds)) {
+        migratedList = {
+          ...list,
+          builds: list.builds.map((entry) => {
+            const source = (entry?.build as any)?.buildSource;
+            if (source !== 'maxroll' && source !== 'mobalytics') return entry;
+            return { ...entry, name: encodeHtmlText(String(entry.name ?? '')), build: encodeBuildStrings(entry.build) };
+          })
+        };
+      }
+      this.settingsService.update(this.getLevelingWindowKey(), (c: any) => ({
+        ...c,
+        ...(migratedList ? { pobBuilds: migratedList } : {}),
+        webImportsHtmlEncoded: true
+      }));
+      if (migratedList) return migratedList;
+    }
+
     // If we have the new format, use it
     if (saved?.pobBuilds) {
       return saved.pobBuilds as PobBuildsList;
@@ -2116,7 +2161,8 @@ export class LevelingWindow {
     this.settingsService.update(this.getLevelingWindowKey(), (c: any) => ({
       ...c,
       pobBuilds: buildsList,
-      pobBuild: undefined // Ensure legacy field is removed
+      pobBuild: undefined, // Ensure legacy field is removed
+      webImportsHtmlEncoded: true // lists saved by this version are already encoded
     }));
   }
 
@@ -2867,6 +2913,7 @@ export class LevelingWindow {
     if ((hotkeys as any).autoGemRegex) {
       const accel = (hotkeys as any).autoGemRegex as string;
       const success = levelingHotkeyManager.register('autoGemRegex', accel, () => {
+        this.autoGemRegexRequestedAt = Date.now();
         if (this.window && !this.window.isDestroyed()) {
           this.window.webContents.send('hotkey-action', 'autoGemRegex');
         }
@@ -2881,6 +2928,10 @@ export class LevelingWindow {
     if (customHotkeys && customHotkeys.length > 0) {
       for (const customHotkey of customHotkeys) {
         if (customHotkey.hotkey) {
+          if (!isSafeTypingHotkey(customHotkey.hotkey)) {
+            console.warn(`[LevelingWindow] Not registering custom hotkey "${customHotkey.hotkey}": it needs Ctrl/Alt, an F-key, or a numpad/navigation key`);
+            continue;
+          }
           const success = levelingHotkeyManager.register(`custom-${customHotkey.id}`, customHotkey.hotkey, async () => {
             await typeInChat(customHotkey.command, customHotkey.pressEnter);
           });

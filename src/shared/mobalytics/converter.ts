@@ -7,6 +7,7 @@
 
 import type { MobalyticsBuild, MobalyticsVariant, MobalyticsNote, MobalyticsSkill } from './parser.js';
 import type { StoredPobBuild, TreeSpec, ItemSet, SkillSet, GemSocketGroup, GemInfo, GemRequirement } from '../pob/types.js';
+import { encodeBuildStrings } from '../pob/encodeBuildStrings.js';
 
 /**
  * Convert a Mobalytics build into StoredPobBuild format
@@ -79,7 +80,9 @@ export function convertMobalyticsToPobBuild(mobaBuild: MobalyticsBuild): StoredP
     totalGems: allGems.length,
   });
 
-  return pobBuild;
+  // Page text is raw; encode it the way the PoB parser does before it reaches
+  // any window template.
+  return encodeBuildStrings(pobBuild);
 }
 
 /**

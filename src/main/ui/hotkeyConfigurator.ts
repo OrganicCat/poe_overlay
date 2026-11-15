@@ -1,5 +1,6 @@
 import { BrowserWindow, screen } from 'electron';
 import { secureWebPreferences } from '../security/webPreferences.js';
+import { jsonForScript } from '../security/htmlEscape.js';
 
 export interface HotkeyConfiguratorParams {
   currentKey: string;
@@ -79,10 +80,10 @@ export class HotkeyConfigurator {
       // Update the UI to show captured key
       this.capturedKey = key;
       this.window?.webContents.executeJavaScript(`
-        document.getElementById('status').textContent = 'Hotkey: ' + '${key}';
+        document.getElementById('status').textContent = 'Hotkey: ' + ${jsonForScript(key)};
         document.getElementById('status').style.color = '#4CAF50';
         document.getElementById('saveBtn').disabled = false;
-        document.getElementById('saveBtn').dataset.key = '${key}';
+        document.getElementById('saveBtn').dataset.key = ${jsonForScript(key)};
       `);
     });
 

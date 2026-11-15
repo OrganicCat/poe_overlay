@@ -165,16 +165,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     removeAllListeners: (channel: string) => ipcRenderer.removeAllListeners(channel)
 });
 
-// Expose a lightweight helper for immediate (no-IPC) path construction to bundled images.
-try {
-    const path = require('path');
-    // Prefer resourcesPath (packaged). Fallback to directory of preload (dev) without using process.cwd (sandbox-safe).
-    const resPath = (process as any).resourcesPath || path.join(__dirname, '..', '..');
-    const root = path.join(resPath, 'bundled-images');
-    contextBridge.exposeInMainWorld('bundledImages', {
-        root: root.replace(/\\/g,'/'),
-        toFileUrl: (rel: string) => 'local-image:///' + rel.replace(/\\/g, '/')
-    });
-} catch (e) {
-    console.warn('[preload] failed to expose bundledImages helper', e);
-}
+// Note: an earlier "bundledImages" helper here called require('path'), which
+// sandboxed preloads can't do, so it never loaded. Renderer code falls back to
+// electronAPI.getBundledImagePath, which is the supported path.

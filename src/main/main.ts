@@ -43,8 +43,14 @@ import { ImageCacheService } from './services/imageCache.js';
 import { resolveLocalImage, resolveByNameOrSlug, getImageIndexMeta } from './services/imageResolver.js';
 import { rateLimiter } from './services/rateLimiter.js';
 import { resolveImageInRoot, localImageUrl } from './security/safePath.js';
+import { installAppHardening } from './security/appHardening.js';
+import { configureLinuxDisplay } from './platform/linux.js';
 import { isOverlayVersion, type OverlayVersion } from '../types/overlayVersion.js';
 import { jsonForScript } from './security/htmlEscape.js';
+
+// Must run before any window is created.
+installAppHardening();
+configureLinuxDisplay();
 
 // History popout debug log path (moved logging helpers into historyPopoutHandlers)
 const historyPopoutDebugLogPath = path.join(app.getPath('userData'), 'history-popout-debug.log');
@@ -3378,7 +3384,17 @@ if ([ForegroundWindowHelper]::IsIconic($ptr)) {
                     console.warn('[IPC:open-external] Invalid URL:', url);
                     return { success: false, error: 'Invalid URL' };
                 }
-                await shell.openExternal(url);
+                // Only web links. shell.openExternal also accepts file://, smb://,
+                // and custom protocol handlers, which can launch local programs.
+                let parsed: URL;
+                try { parsed = new URL(url); } catch {
+                    return { success: false, error: 'Invalid URL' };
+                }
+                if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+                    console.warn('[IPC:open-external] Blocked non-http(s) URL:', parsed.protocol);
+                    return { success: false, error: 'Only http(s) links can be opened' };
+                }
+                await shell.openExternal(parsed.toString());
                 return { success: true };
             } catch (err: any) {
                 console.error('[IPC:open-external] Error:', err);
@@ -3793,8 +3809,16 @@ if ([ForegroundWindowHelper]::IsIconic($ptr)) {
                 return undefined;
             }
         });
+        // Renderers may only write settings that can't be turned into file access
+        // or keystrokes (paths like clientTxtPath*, hotkeys, leveling custom
+        // hotkeys). Add keys here as the overlay needs them.
+        const RENDERER_WRITABLE_SETTINGS = new Set<string>(['historyAutoCleanupDone']);
         ipcMain.handle('set-setting', async (_e, key: string, value: any) => {
             try {
+                if (typeof key !== 'string' || !RENDERER_WRITABLE_SETTINGS.has(key)) {
+                    console.warn('[IPC:set-setting] Refused write to setting:', key);
+                    return { ok: false, error: 'Setting is not writable from the overlay' };
+                }
                 this.settingsService?.set(key as keyof UserSettings, value);
                 return { ok: true };
             } catch (e: any) {

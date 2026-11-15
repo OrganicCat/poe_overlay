@@ -60,6 +60,7 @@ import {
   sendHistoryToPopout
 } from './historyPopout';
 import { autoRefreshManager } from './autoRefresh';
+import { escapeHtml } from '../utils';
 import { updateSessionUI, attachLoginButtonLogic } from './sessionManager';
 import { attachRefreshButtonLogic } from './refreshButton';
 import { initializeHistoryLeagueControls, initializeHistoryLeagueState, formatLeagueLabel, setLeaguePreference } from './historyLeague';
@@ -214,7 +215,7 @@ function prepareUiForManualLeagueChange(league: string): void {
   const label = formatLeagueLabel(league);
   const list = document.getElementById('historyList');
   if (list) {
-    (list as HTMLElement).innerHTML = `<div class="no-mods" style="padding:8px;">Loading ${label}…</div>`;
+    (list as HTMLElement).innerHTML = `<div class="no-mods" style="padding:8px;">Loading ${escapeHtml(label)}…</div>`;
   }
   const detail = document.getElementById('historyDetail');
   if (detail) {

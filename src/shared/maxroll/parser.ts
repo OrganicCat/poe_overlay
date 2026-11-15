@@ -52,6 +52,15 @@ export interface MaxrollBuild {
   raw?: any; // keep raw for debugging/fallbacks
 }
 
+/** Refuse anything that isn't https on the expected site (the old check was an unanchored regex). */
+function assertHost(rawUrl: string, host: string): void {
+  let parsed: URL;
+  try { parsed = new URL(rawUrl); } catch { throw new Error(`Invalid URL. Expected an https://${host}/ link`); }
+  if (parsed.protocol !== 'https:' || (parsed.hostname !== host && !parsed.hostname.endsWith('.' + host))) {
+    throw new Error(`Invalid URL. Expected an https://${host}/ link`);
+  }
+}
+
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
 /**
@@ -59,6 +68,7 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
  */
 export async function fetchMaxrollBuild(url: string): Promise<MaxrollBuild> {
   const normalized = url.trim();
+  assertHost(normalized, 'maxroll.gg');
 
   // Allow either direct planner URLs or guide URLs that contain a planner link
   if (!/maxroll\.gg\/poe2\/planner\//i.test(normalized)) {
@@ -88,6 +98,7 @@ export async function fetchMaxrollBuild(url: string): Promise<MaxrollBuild> {
 }
 
 async function fetchPlannerBuild(plannerUrl: string, uniqueNames?: Record<string, string>, gemNames?: Record<string, string>): Promise<MaxrollBuild> {
+  assertHost(plannerUrl, 'maxroll.gg');
   const response = await fetchWithRetry(plannerUrl, {
     headers: {
       'User-Agent': UA,

@@ -8,7 +8,7 @@ import { registerOverlayWindow, unregisterOverlayWindow } from './windowZManager
 import type { SettingsService } from '../services/settingsService.js';
 import type { OverlayVersion } from '../../types/overlayVersion.js';
 import { secureWebPreferences } from '../security/webPreferences.js';
-import { jsonForScript } from '../security/htmlEscape.js';
+import { jsonForScript, escapeHtml } from '../security/htmlEscape.js';
 
 interface LevelingSettingsSplashParams {
   settingsService: SettingsService;
@@ -18,6 +18,11 @@ interface LevelingSettingsSplashParams {
 }
 
 let activeSettingsWindow: BrowserWindow | null = null;
+
+/** True if an IPC message came from the leveling settings window. */
+export function isLevelingSettingsSender(sender: Electron.WebContents): boolean {
+  return !!activeSettingsWindow && !activeSettingsWindow.isDestroyed() && activeSettingsWindow.webContents === sender;
+}
 
 export function openLevelingSettingsSplash(params: LevelingSettingsSplashParams): void {
   // If already open, just focus it (and optionally switch tab)
@@ -1210,7 +1215,7 @@ function buildLevelingSettingsSplashHtml(
             <div class="setting-description">Location of your Path of Exile Client.txt log file</div>
           </div>
           
-          <div class="file-path-display" id="clientPathDisplay">${clientTxtPath}</div>
+          <div class="file-path-display" id="clientPathDisplay">${escapeHtml(clientTxtPath)}</div>
           
           <div class="button-group">
             <button class="action-btn" onclick="autoDetectPath()">🔍 Auto Detect</button>
@@ -1685,10 +1690,21 @@ function buildLevelingSettingsSplashHtml(
       });
     }
     
+    // Build names default to the imported build's title, which arrives
+    // HTML-encoded, while renamed builds are stored raw. Decode first so both
+    // render the same, then escape quotes too because this lands in value="".
     function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
+      return String(text == null ? '' : text)
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#0?39;/g, "'")
+        .replace(/&amp;/g, '&')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     }
     
     function saveBuildName(buildId, newName) {
@@ -2047,7 +2063,7 @@ function buildLevelingSettingsSplashHtml(
     })();
     
     // Handle initial tab if specified
-    const initialTab = '${initialTab || ''}';
+    const initialTab = ${jsonForScript(initialTab || '')};
     if (initialTab) {
       // Wait for DOM to be ready, then switch to the specified tab
       setTimeout(() => {

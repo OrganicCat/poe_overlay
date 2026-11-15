@@ -7,6 +7,7 @@
 
 import { clipboard } from 'electron';
 import { UiohookKey, uIOhook } from 'uiohook-napi';
+import { sanitizeTypedText } from '../security/typingGuards.js';
 
 /**
  * Type chat text into Path of Exile using clipboard + keyboard simulation
@@ -20,6 +21,9 @@ import { UiohookKey, uIOhook } from 'uiohook-napi';
  *                     - false: Just pastes into current field (for stash search regex, etc.)
  */
 export async function typeInChat(command: string, pressEnter: boolean = true): Promise<void> {
+  // Single line only: the explicit Enter below is the only one that gets sent.
+  command = sanitizeTypedText(command);
+  if (!command) return;
   // Save current clipboard content
   let previousClipboard = '';
   try {
@@ -82,6 +86,8 @@ export async function executeLogout(): Promise<void> {
  * @param regex - The regex pattern to paste into the stash search
  */
 export async function typeInStashSearch(regex: string): Promise<void> {
+  regex = sanitizeTypedText(regex);
+  if (!regex) return;
   // Save current clipboard content
   let previousClipboard = '';
   try {

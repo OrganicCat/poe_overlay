@@ -82,7 +82,11 @@ function normalizeSelectedSlugs(slugs: any): string[] {
 export async function fetchMobalyticsBuild(url: string): Promise<MobalyticsBuild> {
   // Validate URL - accept both builds and profile URLs
   const urlPattern = /mobalytics\.gg\/poe-2\/(builds|profile)/i;
-  if (!urlPattern.test(url)) {
+  let parsedUrl: URL | null = null;
+  try { parsedUrl = new URL(url.trim()); } catch { /* handled below */ }
+  const hostOk = !!parsedUrl && parsedUrl.protocol === 'https:'
+    && (parsedUrl.hostname === 'mobalytics.gg' || parsedUrl.hostname.endsWith('.mobalytics.gg'));
+  if (!hostOk || !urlPattern.test(url)) {
     throw new Error('Invalid Mobalytics URL. Expected a URL containing "mobalytics.gg/poe-2/"');
   }
 

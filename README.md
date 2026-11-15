@@ -28,6 +28,43 @@ Lightweight PoE1 and PoE2 item & modifier overlay – copy an item, see the data
 
 ---
 
+## About this fork
+
+This fork of [XileHUD/poe_overlay](https://github.com/XileHUD/poe_overlay) fixes several security problems and adds Linux support. The features are the same as upstream.
+
+### Security changes
+
+- **Imported builds can no longer run code.** A Path of Building code, pobb.in link, or Maxroll/Mobalytics guide could inject a script into the leveling windows. Gear set titles in Path of Building data weren't escaped, guide text wasn't escaped at all, and build data embedded in inline scripts could close the script tag. Since those windows had full Node.js access, injected script could run programs on your computer. All of these paths are now escaped.
+- **Windows are sandboxed.** The ten auxiliary windows (settings, leveling, gems, gear, notes, tree, and others) used to run with Node.js enabled. They now run in Chromium's sandbox with context isolation, and reach the app through a small preload (`src/main/windowPreload.ts`).
+- **The IPC handlers check their input.** Image lookups and the `local-image://` protocol can't read files outside the image folders. `open-external` only opens http(s) links. The overlay can't change file paths or hotkeys through `set-setting`. Custom chat hotkeys only accept changes from the leveling settings window, paste a single line, and can't be bound to a bare letter or number key. The gem regex paste only fires right after you press its hotkey. Guide imports must use exact maxroll.gg or mobalytics.gg hosts.
+- **Electron 45 instead of 28.** Electron 28 stopped getting security fixes in 2024.
+- **Updates come from this fork.** The auto-updater reads releases from `OrganicCat/poe_overlay`, so it won't replace this build with an upstream one that lacks these fixes. The "new version available" notice still points at upstream, so you can see when there are changes worth merging.
+
+Maxroll and Mobalytics builds you saved with an older version are re-escaped once on first launch.
+
+### Linux
+
+Path of Exile running through Steam (Proton) or Wine is supported.
+
+**Install (Ubuntu, Debian and derivatives):**
+
+```sh
+npm ci --ignore-scripts
+npx install-electron --no
+npm run dist:linux
+sudo apt install ./dist_electron/XileHUD-0.6.12-amd64.deb
+```
+
+Use the `.deb` on Ubuntu 24.04 and newer. It installs an AppArmor profile that lets Chromium's sandbox run. The AppImage in `dist_electron/` works on other distributions, but on Ubuntu 24.04+ it can only start with `--no-sandbox`, which turns off the protection described above.
+
+How it behaves on Linux:
+
+- The app runs through XWayland even in a Wayland session. Wayland doesn't let an app position its own windows or stay above a fullscreen game, and the global keyboard hook only sees X11 input. Path of Exile under Proton is an X11 window, so hotkeys work while the game has focus. Set `XILEHUD_WAYLAND=1` to run as a native Wayland app instead.
+- `Client.txt` (used for zone detection while leveling) is found automatically in Steam libraries, including Flatpak and Snap Steam and extra library folders, and in common Wine and Lutris prefixes. If it isn't found, choose it in the leveling settings. It's normally at `~/.local/share/Steam/steamapps/common/Path of Exile/logs/Client.txt`.
+- To see renderer errors in the terminal, start the app with `XILEHUD_DEBUG_RENDERER=1`.
+
+---
+
 ## What is XileHUD?
 
 I initially created this HUD for my personal use. As a self-employed trader, I spend a lot of time on the PC, and Path of Exile is the perfect game for that. I've been coding as a hobby for some years now, mainly building tools that help me get things done faster. A friend saw the overlay and told me I should release it to the public, so here we are. I hope you find it as useful as I do!

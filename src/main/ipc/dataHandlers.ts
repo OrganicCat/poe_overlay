@@ -1,4 +1,4 @@
-import { ipcMain, shell } from 'electron';
+import { ipcMain, shell, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { promises as fsp } from 'fs';
@@ -153,7 +153,15 @@ export function registerDataIpc(deps: DataIpcDeps) {
 
   const validateDataDir = deps.validateDataDir ?? (() => ({ valid: true as const }));
 
-  ipcMain.handle('set-data-dir', async (_e, dirPath: string) => {
+  ipcMain.handle('set-data-dir', async (_e, _requestedPath: unknown) => {
+    // The folder always comes from a dialog the user sees, never from the
+    // renderer: a page could otherwise point the app at a network share
+    // (leaking Windows credentials over SMB) or any local folder.
+    const picked = await dialog.showOpenDialog({ title: 'Select data folder', properties: ['openDirectory'] });
+    let dirPath: string | undefined = picked.canceled ? undefined : picked.filePaths[0];
+    if (dirPath && /^(\\\\|\/\/)/.test(dirPath)) {
+      return { ok: false, error: 'network_paths_not_supported' };
+    }
     if (typeof dirPath === 'string' && dirPath.trim()) {
       const validation = validateDataDir(dirPath);
       if (!validation.valid) {
@@ -880,6 +888,11 @@ export function registerDataIpc(deps: DataIpcDeps) {
 
   try { ipcMain.removeHandler('get-poe1-gem-detail'); } catch {}
   ipcMain.handle('get-poe1-gem-detail', async (_event, gemSlug: string) => {
+    // Slugs are file names like "Added_Fire_Damage_Support"; refuse anything
+    // that could walk out of the details folder.
+    if (typeof gemSlug !== 'string' || !/^[A-Za-z0-9_'%-]{1,160}$/.test(gemSlug)) {
+      return { error: 'invalid_slug' };
+    }
     try {
       const detailPath = toDataPath('items', 'gems', 'details', `${gemSlug}.json`);
       try {

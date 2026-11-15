@@ -10,7 +10,7 @@
 
 import { historyState, deleteHistoryEntry } from './historyData';
 import { historyVisible } from './historyView';
-import { normalizeCurrency, escapeHtml } from '../utils';
+import { normalizeCurrency, escapeHtml, cssToken } from '../utils';
 import { applyFilters, applySort, renderHistoryActiveFilters } from './historyFilters';
 import { recomputeTotalsFromEntries, renderHistoryTotals } from './historyTotals';
 import { renderHistoryList } from './historyList';
@@ -190,7 +190,7 @@ export function renderHistoryDetail(idx: number): void {
           <div class="card-header">
             <div class="card-title">${escapeHtml(fallbackName)}</div>
             <div style="display:flex; align-items:center; gap:8px;">
-              <span class="price-badge large" title="Sold price"><span class="amount">${fallbackAmount}</span> ${currencyLabel}</span>
+              <span class="price-badge large" title="Sold price"><span class="amount">${escapeHtml(fallbackAmount)}</span> ${escapeHtml(currencyLabel)}</span>
             </div>
           </div>
           <div class="grid">
@@ -228,7 +228,7 @@ export function renderHistoryDetail(idx: number): void {
   const frameMap: Record<number, string> = { 0: 'Normal', 1: 'Magic', 2: 'Rare', 3: 'Unique' };
   const rarityRaw: string | undefined = (item?.rarity && String(item.rarity)) || (item?.frameType != null ? frameMap[item.frameType] : undefined);
   const rarity = rarityRaw ? String(rarityRaw) : 'Normal';
-  const rarityClass = `rarity-${rarity.toLowerCase()}`;
+  const rarityClass = `rarity-${cssToken(rarity.toLowerCase())}`;
   
   const note = it?.note || it?.price?.raw || (it?.price ? `~b/o ${it.price.amount} ${it.price.currency}` : "");
   const fallbackSummary = [
@@ -381,7 +381,7 @@ export function renderHistoryDetail(idx: number): void {
   const cur = normalizeCurrency(it?.price?.currency ?? it?.currency ?? "");
   const curDisplay = cur ? cur.charAt(0).toUpperCase() + cur.slice(1) : "";
   const amt = it?.price?.amount ?? it?.amount ?? "";
-  const curClass = cur ? `currency-${cur}` : "";
+  const curClass = cur ? `currency-${cssToken(cur)}` : "";
   
   // Quality (look for property named/containing Quality or type 6)
   let qualityValue = '';
@@ -538,7 +538,7 @@ export function renderHistoryDetail(idx: number): void {
           if (rItem) {
             const rIcon = rItem.icon || '';
             const title = (rItem.name || rItem.typeLine || '').trim();
-            return `<div class=\"socket rune\" title=\"${escapeHtml(title)}\">${rIcon ? `<img src='${rIcon}' loading='lazy'/>` : '<span class=\"rune-placeholder\">R</span>'}</div>`;
+            return `<div class=\"socket rune\" title=\"${escapeHtml(title)}\">${rIcon ? `<img src='${escapeHtml(rIcon)}' loading='lazy'/>` : '<span class=\"rune-placeholder\">R</span>'}</div>`;
           }
           return `<div class=\"socket empty${colorClass}\"></div>`;
         }).join(arr.length > 1 ? '<div class=\"socket-link socket-link-connected\"></div>' : '');
@@ -563,7 +563,7 @@ export function renderHistoryDetail(idx: number): void {
         <div class="card-header">
           <div class="card-title">${escapeHtml(name)}${qualityValue ? ` <span class=\"quality-badge\" title=\"Quality\">${escapeHtml(qualityValue.replace(/^\+/, ''))}</span>` : ''}</div>
           <div style="display:flex; align-items:center; gap:8px;">
-            <span class="price-badge large ${curClass}" title="Sold price"><span class="amount">${amt}x</span> ${curDisplay}</span>
+            <span class="price-badge large ${curClass}" title="Sold price"><span class="amount">${escapeHtml(amt)}x</span> ${escapeHtml(curDisplay)}</span>
             <button class="history-delete-btn" data-idx="${safeIdx}" title="Delete this entry" aria-label="Delete entry">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -574,10 +574,10 @@ export function renderHistoryDetail(idx: number): void {
         </div>
         <div class="grid">
           <div>
-            ${icon ? `<img src="${icon}" alt="icon" class="history-item-icon" loading="lazy" decoding="async"/>` : ""}
+            ${icon ? `<img src="${escapeHtml(icon)}" alt="icon" class="history-item-icon" loading="lazy" decoding="async"/>` : ""}
           </div>
           <div>
-            <div class="card-sub">${escapeHtml(base || fallbackSummary)}${ilvl ? ` • iLvl ${ilvl}` : ""}${rarity ? ` • <span class="rarity-label ${rarityClass}">${escapeHtml(rarity)}</span>` : ""}${
+            <div class="card-sub">${escapeHtml(base || fallbackSummary)}${ilvl ? ` • iLvl ${escapeHtml(ilvl)}` : ""}${rarity ? ` • <span class="rarity-label ${rarityClass}">${escapeHtml(rarity)}</span>` : ""}${
     corrupted ? ` <span class="badge-corrupted">Corrupted</span>` : ""
   }</div>
             ${metaStackHtml}
