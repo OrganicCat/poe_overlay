@@ -13,6 +13,7 @@ export interface CreateTrayParams {
   onOpenSettings?: () => void;
   onShowOverlay?: () => void;
   onForceLevelingToPrimary?: () => void;
+  onOpenPassiveTree?: () => void;
   currentHotkeyLabel?: string;
   featureVisibility?: {
     modifiers?: boolean;
@@ -32,6 +33,7 @@ export function createTray(params: CreateTrayParams): Tray | null {
     onOpenSettings,
     onShowOverlay,
     onForceLevelingToPrimary,
+    onOpenPassiveTree,
     currentHotkeyLabel = 'Ctrl+Q',
     featureVisibility
   } = params;
@@ -143,6 +145,7 @@ export function createTray(params: CreateTrayParams): Tray | null {
     { type: 'separator', visible: showModifiers || showMerchantHistory },
     { label: 'Toggle Floating Button', click: () => onToggleFloatingButton?.(), visible: !!onToggleFloatingButton },
     { type: 'separator', visible: !!onToggleFloatingButton },
+    { label: 'Passive Tree (active build)', click: () => onOpenPassiveTree?.(), visible: !!onOpenPassiveTree },
     { label: 'Move Leveling Overlay to Primary Monitor', click: () => onForceLevelingToPrimary?.(), visible: !!onForceLevelingToPrimary },
     { label: 'Settings...', click: () => onOpenSettings?.(), visible: !!onOpenSettings },
     { type: 'separator', visible: !!onOpenSettings || !!onForceLevelingToPrimary },

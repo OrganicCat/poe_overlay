@@ -7,7 +7,7 @@ export { parsePobCode } from './parser.js';
 export { extractUniqueGems, matchGemsToQuestSteps } from './gemMatcher.js';
 export { findGemQuest, matchPobGemsToQuests, getGemsForQuest, formatGemQuestInfo, matchGemsForStep } from './gemQuestMatcher.js';
 export { calculateTreeProgressionByAct, calculateTreeProgressionFromHistory, getRecommendedActForLevel } from './treeProgression.js';
-export { nodeLookup326, nodeLookup327, nodeLookupPoe2 } from './treeLoader.js';
+export { nodeLookup326, nodeLookup327, nodeLookupPoe2, getPoe1NodeLookup, resolvePoe1TreeKey } from './treeLoader.js';
 export {
   extractWeaponType,
   getCategoryForWeaponType,

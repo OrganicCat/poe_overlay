@@ -690,6 +690,7 @@ if ($hwnd -eq [System.IntPtr]::Zero) {
                 onQuit: () => app.quit(),
                 onToggleFloatingButton: this.levelingOnlyMode ? undefined : () => this.toggleFloatingButton(),
                 onOpenSettings: () => this.openSettings(),
+                onOpenPassiveTree: () => this.openPassiveTreeFromTray(),
                 onShowOverlay: this.levelingOnlyMode
                     ? () => this.levelingWindow?.toggle()
                     : () => this.showDefaultOverlay({ focus: true }),
@@ -1196,6 +1197,17 @@ if ($hwnd -eq [System.IntPtr]::Zero) {
     /**
      * Lazy initialization of leveling window - only create when user requests it
      */
+    private openPassiveTreeFromTray(): void {
+        try {
+            const opened = this.ensureLevelingWindow().togglePassiveTreeWindow();
+            if (!opened) {
+                showToast(this.overlayWindow ?? null, 'No build loaded. Open Tools > Leveling Guide and import a Path of Building build first.', 'warning');
+            }
+        } catch (e) {
+            console.warn('[Tray] Failed to open passive tree:', e);
+        }
+    }
+
     private ensureLevelingWindow(): LevelingWindow {
         if (!this.levelingWindow) {
             if (!this.settingsService) {
@@ -1781,7 +1793,11 @@ if ($hwnd -eq [System.IntPtr]::Zero) {
             resizable: true, // allow height-only resize (width constrained below)
             transparent: true,
             show: false,
-            focusable: false,  // Start as non-focusable to avoid intercepting game input
+            // Start as non-focusable to avoid intercepting game input. Not on Linux:
+            // an X11 window created non-focusable becomes override-redirect for its
+            // whole life, so the window manager can't move it (header dragging does
+            // nothing) and it can't take keyboard focus (search box).
+            focusable: process.platform === 'linux',
             icon: windowIcon,
             // Critical for windowed fullscreen games: ensure overlay stays above game
             type: process.platform === 'win32' ? 'toolbar' : undefined
@@ -3041,6 +3057,7 @@ if ([ForegroundWindowHelper]::IsIconic($ptr)) {
                 onQuit: () => app.quit(),
                 onToggleFloatingButton: () => this.toggleFloatingButton(),
                 onOpenSettings: () => this.openSettings(),
+                onOpenPassiveTree: () => this.openPassiveTreeFromTray(),
                 onShowOverlay: () => this.showDefaultOverlay({ focus: true }),
                 currentHotkeyLabel: this.getHotkeyKey(),
                 featureVisibility: this.overlayVersion === 'poe2'

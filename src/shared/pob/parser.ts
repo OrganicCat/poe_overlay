@@ -8,7 +8,7 @@ import { DOMParser } from '@xmldom/xmldom';
 import { ParsedPobBuild, TreeSpec, GemSocketGroup, GemInfo, SkillSet, ItemSet, Item } from './types';
 import { parseTreeUrl } from './treeParser';
 import { decodePobCode } from './decoder.js';
-import { nodeLookup326, nodeLookup327, nodeLookup328, nodeLookupPoe2, nodeLookupPoe2Legacy, nodeLookupPoe2v44, detectPoe2TreeVersion } from './treeLoader';  // Import all lookups
+import { getPoe1NodeLookup, resolvePoe1TreeKey, nodeLookupPoe2, nodeLookupPoe2Legacy, nodeLookupPoe2v44, detectPoe2TreeVersion } from './treeLoader';  // Import all lookups
 
 /**
  * Sanitize string to prevent XSS attacks
@@ -86,23 +86,9 @@ export async function parsePobCode(code: string, gameVersion: 'poe1' | 'poe2' = 
       // Start with the latest as default
       lookup = nodeLookupPoe2v44;
     } else {
-      // For PoE1, use tree version to select lookup
-      if (treeVersion === '3_28') {
-        lookup = nodeLookup328;
-        console.log('[PoB Parser] Using 3.28 tree lookup');
-      } else if (treeVersion === '3_27') {
-        lookup = nodeLookup327;
-        console.log('[PoB Parser] Using 3.27 tree lookup');
-      } else if (treeVersion === '3_26') {
-        lookup = nodeLookup326;
-        console.log('[PoB Parser] Using 3.26 tree lookup');
-      } else {
-        // Newer (e.g. 3_29/3_30) or missing versions: use the latest bundled
-        // tree, the same one the tree window draws. Falling back to 3.26 here
-        // dropped every passive added since 3.26.
-        lookup = nodeLookup328;
-        console.log(`[PoB Parser] Tree version ${treeVersion || '(none)'} not bundled; using 3.28 tree lookup`);
-      }
+      // For PoE1, use tree version to select lookup (newer/unknown -> newest bundled)
+      lookup = getPoe1NodeLookup(treeVersion);
+      console.log(`[PoB Parser] Tree version ${treeVersion || '(none)'} -> ${resolvePoe1TreeKey(treeVersion)} tree lookup`);
     }
 
     // Extract ALL passive tree specs (Early Game, Act 5, End Game, etc.)

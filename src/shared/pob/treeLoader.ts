@@ -3,13 +3,14 @@
  * 
  * Loads processed tree JSON and generates SVG templates + node lookups.
  * This runs at build time (imported by main process).
- * Supports both PoE1 (3.26, 3.27, 3.28) and PoE2 trees.
+ * Supports both PoE1 (3.26, 3.27, 3.28, 3.30) and PoE2 trees.
  */
 
 import { SkillTreeData, NodeLookup, buildTemplate } from './treeSvg';
 import tree326 from '../../data/leveling-data/trees/3_26_processed.json';
 import tree327 from '../../data/leveling-data/trees/3_27_processed.json';
 import tree328 from '../../data/leveling-data/trees/3_28_processed.json';
+import tree330 from '../../data/leveling-data/trees/3_30_processed.json';
 import treePoe2Legacy from '../../data/leveling-data/trees/poe2_processed.json';
 import treePoe2v44 from '../../data/leveling-data/trees/poe2_4.4_processed.json';
 
@@ -17,6 +18,7 @@ import treePoe2v44 from '../../data/leveling-data/trees/poe2_4.4_processed.json'
 const tree326Data: SkillTreeData = tree326 as unknown as SkillTreeData;
 const tree327Data: SkillTreeData = tree327 as unknown as SkillTreeData;
 const tree328Data: SkillTreeData = tree328 as unknown as SkillTreeData;
+const tree330Data: SkillTreeData = tree330 as unknown as SkillTreeData;
 const treePoe2LegacyData: SkillTreeData = treePoe2Legacy as unknown as SkillTreeData;
 const treePoe2v44Data: SkillTreeData = treePoe2v44 as unknown as SkillTreeData;
 
@@ -39,6 +41,30 @@ export const nodeLookup328: NodeLookup = Object.assign(
 );
 
 // Build node lookups for PoE2 Legacy (pre-4.4)
+export const nodeLookup330: NodeLookup = Object.assign(
+  {},
+  ...tree330Data.graphs.map((graph) => graph.nodes)
+);
+
+/**
+ * PoE1 tree to use for a Path of Building treeVersion ("3_26", "3_29", ...).
+ * Versions without bundled data (3.29, anything newer, or missing) use the
+ * newest bundled tree, which is also what the tree window draws.
+ */
+export type Poe1TreeKey = '3_26' | '3_27' | '3_28' | '3_30';
+export function resolvePoe1TreeKey(treeVersion?: string | null): Poe1TreeKey {
+  if (treeVersion === '3_26' || treeVersion === '3_27' || treeVersion === '3_28') return treeVersion;
+  return '3_30';
+}
+export function getPoe1NodeLookup(treeVersion?: string | null): NodeLookup {
+  switch (resolvePoe1TreeKey(treeVersion)) {
+    case '3_26': return nodeLookup326;
+    case '3_27': return nodeLookup327;
+    case '3_28': return nodeLookup328;
+    default: return nodeLookup330;
+  }
+}
+
 export const nodeLookupPoe2Legacy: NodeLookup = Object.assign(
   {},
   ...treePoe2LegacyData.graphs.map((graph) => graph.nodes)
@@ -62,6 +88,10 @@ export const template327 = buildTemplate(tree327Data, nodeLookup327);
 // Generate SVG templates for PoE1 3.28
 export const template328 = buildTemplate(tree328Data, nodeLookup328);
 
+// Generate SVG templates for PoE1 3.30 (Covens of Umbra; adds the Luminary ascendancy).
+// Built from GGG's 3.30.0 export with scripts/build-poe1-tree.mjs.
+export const template330 = buildTemplate(tree330Data, nodeLookup330);
+
 // Generate SVG templates for PoE2 Legacy
 export const poe2TemplateLegacy = buildTemplate(treePoe2LegacyData, nodeLookupPoe2Legacy);
 
@@ -75,6 +105,7 @@ export const poe2Template = poe2Templatev44;
 export const skillTree326 = tree326Data;
 export const skillTree327 = tree327Data;
 export const skillTree328 = tree328Data;
+export const skillTree330 = tree330Data;
 export const skillTreePoe2Legacy = treePoe2LegacyData;
 export const skillTreePoe2v44 = treePoe2v44Data;
 export const skillTreePoe2 = treePoe2v44Data;
@@ -170,5 +201,6 @@ export const skillTree = tree326Data;
 console.log(`[Tree Loader] Loaded PoE1 3.26 tree: ${Object.keys(nodeLookup326).length} nodes`);
 console.log(`[Tree Loader] Loaded PoE1 3.27 tree: ${Object.keys(nodeLookup327).length} nodes`);
 console.log(`[Tree Loader] Loaded PoE1 3.28 tree: ${Object.keys(nodeLookup328).length} nodes`);
+console.log(`[Tree Loader] Loaded PoE1 3.30 tree: ${Object.keys(nodeLookup330).length} nodes`);
 console.log(`[Tree Loader] Loaded PoE2 Legacy tree: ${Object.keys(nodeLookupPoe2Legacy).length} nodes`);
 console.log(`[Tree Loader] Loaded PoE2 v4.4 tree: ${Object.keys(nodeLookupPoe2v44).length} nodes`);

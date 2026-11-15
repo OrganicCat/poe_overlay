@@ -31,6 +31,7 @@ import {
   getActiveBuild,
   getAllBuilds,
   nodeLookup326,
+  getPoe1NodeLookup,
   nodeLookup327,
   nodeLookupPoe2,
   migrateLegacyBuild,
@@ -1140,35 +1141,7 @@ export class LevelingWindow {
 
     // Open/toggle passive tree window from PoB info bar
     ipcMain.on('open-pob-tree-window', () => {
-      const pobBuild = this.getActivePobBuild();
-      
-      if (!pobBuild || !pobBuild.treeSpecs || pobBuild.treeSpecs.length === 0) {
-        console.warn('[LevelingWindow] Cannot open tree window - no PoB build with trees loaded');
-        return;
-      }
-      
-      if (isTreeWindowOpen()) {
-        closeTreeWindow();
-        console.log('[LevelingWindow] Tree window closed (toggle)');
-      } else {
-        console.log('[LevelingWindow] Opening tree window with', pobBuild.treeSpecs.length, 'tree specs for', this.overlayVersion);
-  const saved = this.settingsService.get(this.getLevelingWindowKey());
-        const currentActIndex = (saved as any)?.currentActIndex || 0;
-        const characterLevel = (saved as any)?.characterLevel || 1;
-        const autoDetectEnabled = (saved as any)?.uiSettings?.autoDetectLevelingSets ?? true;
-  const savedTreeIndex = (saved as any)?.selectedTreeIndex;
-        const onTreeWindowReady = () => {
-          console.log('[LevelingWindow] Tree window reported ready, sending data');
-          sendTreeData(pobBuild.treeSpecs, this.overlayVersion, currentActIndex + 1, characterLevel, autoDetectEnabled, savedTreeIndex, pobBuild.treeVersion, pobBuild.buildSource);
-        };
-        ipcMain.once('tree-window-ready', onTreeWindowReady);
-        const treeWindow = createPassiveTreeWindow();
-        if (!treeWindow.webContents.isLoading()) {
-          ipcMain.removeListener('tree-window-ready', onTreeWindowReady);
-          console.log('[LevelingWindow] Tree window already loaded, sending data immediately');
-          sendTreeData(pobBuild.treeSpecs, this.overlayVersion, currentActIndex + 1, characterLevel, autoDetectEnabled, savedTreeIndex, pobBuild.treeVersion, pobBuild.buildSource);
-        }
-      }
+      this.togglePassiveTreeWindow();
     });
 
     // Open/toggle notes window from PoB info bar
@@ -2104,6 +2077,44 @@ export class LevelingWindow {
   }
 
   /**
+   * Open or close the passive tree window for the active build. Used by the
+   * PoB info bar button and the tray menu. Returns false if no build with a
+   * tree is loaded.
+   */
+  public togglePassiveTreeWindow(): boolean {
+      const pobBuild = this.getActivePobBuild();
+      
+      if (!pobBuild || !pobBuild.treeSpecs || pobBuild.treeSpecs.length === 0) {
+        console.warn('[LevelingWindow] Cannot open tree window - no PoB build with trees loaded');
+        return false;
+      }
+      
+      if (isTreeWindowOpen()) {
+        closeTreeWindow();
+        console.log('[LevelingWindow] Tree window closed (toggle)');
+      } else {
+        console.log('[LevelingWindow] Opening tree window with', pobBuild.treeSpecs.length, 'tree specs for', this.overlayVersion);
+  const saved = this.settingsService.get(this.getLevelingWindowKey());
+        const currentActIndex = (saved as any)?.currentActIndex || 0;
+        const characterLevel = (saved as any)?.characterLevel || 1;
+        const autoDetectEnabled = (saved as any)?.uiSettings?.autoDetectLevelingSets ?? true;
+  const savedTreeIndex = (saved as any)?.selectedTreeIndex;
+        const onTreeWindowReady = () => {
+          console.log('[LevelingWindow] Tree window reported ready, sending data');
+          sendTreeData(pobBuild.treeSpecs, this.overlayVersion, currentActIndex + 1, characterLevel, autoDetectEnabled, savedTreeIndex, pobBuild.treeVersion, pobBuild.buildSource);
+        };
+        ipcMain.once('tree-window-ready', onTreeWindowReady);
+        const treeWindow = createPassiveTreeWindow();
+        if (!treeWindow.webContents.isLoading()) {
+          ipcMain.removeListener('tree-window-ready', onTreeWindowReady);
+          console.log('[LevelingWindow] Tree window already loaded, sending data immediately');
+          sendTreeData(pobBuild.treeSpecs, this.overlayVersion, currentActIndex + 1, characterLevel, autoDetectEnabled, savedTreeIndex, pobBuild.treeVersion, pobBuild.buildSource);
+        }
+      }
+    return true;
+  }
+
+  /**
    * Get or migrate POB builds list from settings
    */
   private getPobBuildsList(): PobBuildsList {
@@ -2468,7 +2479,7 @@ export class LevelingWindow {
 
       // Get node lookup based on game version
       const gameVersion = this.overlayVersion;
-      const nodeLookup = gameVersion === 'poe2' ? nodeLookupPoe2 : nodeLookup326;
+      const nodeLookup = gameVersion === 'poe2' ? nodeLookupPoe2 : getPoe1NodeLookup((build as any).treeVersion);
 
       // Calculate tree progression by act
       // For Maxroll builds with history, use history-based progression to respect allocation order

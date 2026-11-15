@@ -51,7 +51,8 @@ export class FloatingButton {
       transparent: true,
       alwaysOnTop: true,
       skipTaskbar: true,
-      focusable: false,
+      // Linux: created non-focusable means override-redirect, which can't be dragged.
+      focusable: process.platform === 'linux',
       resizable: false,
       hasShadow: false,
       webPreferences: secureWebPreferences({ backgroundThrottling: false }),

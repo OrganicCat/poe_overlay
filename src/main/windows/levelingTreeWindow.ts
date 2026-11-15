@@ -2355,29 +2355,14 @@ export function sendTreeData(treeSpecs: any[], gameVersion: 'poe1' | 'poe2' = 'p
         console.log('[Tree Window] Using PoE2 v4.4 tree template');
       }
     } else {
-      // For PoE1, use tree version to select the correct tree
-      if (treeVersion === '3_28') {
-        treeSvg = template.template328?.svg || '';
-        viewBox = template.template328?.viewBox || '';
-        treeData = template.skillTree328;
-        console.log('[Tree Window] Using PoE1 3.28 tree template');
-      } else if (treeVersion === '3_27') {
-        treeSvg = template.template327?.svg || '';
-        viewBox = template.template327?.viewBox || '';
-        treeData = template.skillTree327;
-        console.log('[Tree Window] Using PoE1 3.27 tree template');
-      } else if (treeVersion === '3_26') {
-        treeSvg = template.template326?.svg || '';
-        viewBox = template.template326?.viewBox || '';
-        treeData = template.skillTree326;
-        console.log('[Tree Window] Using PoE1 3.26 tree template');
-      } else {
-        // Default to latest (3.28)
-        treeSvg = template.template328?.svg || '';
-        viewBox = template.template328?.viewBox || '';
-        treeData = template.skillTree328;
-        console.log('[Tree Window] Using PoE1 3.28 tree template (default)');
-      }
+      // For PoE1, use tree version to select the correct tree (3.29, newer, or
+      // missing versions use the newest bundled tree, same as the parser).
+      const key = template.resolvePoe1TreeKey(treeVersion);
+      const suffix = key.replace('_', '');
+      treeSvg = template['template' + suffix]?.svg || '';
+      viewBox = template['template' + suffix]?.viewBox || '';
+      treeData = template['skillTree' + suffix];
+      console.log(`[Tree Window] Using PoE1 ${key} tree template (build tree version ${treeVersion || 'none'})`);
     }
     
     console.log('[Tree Window] Prepared template for payload', {
