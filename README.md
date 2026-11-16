@@ -52,8 +52,10 @@ Path of Exile running through Steam (Proton) or Wine is supported.
 npm ci --ignore-scripts
 npx install-electron --no
 npm run dist:linux
-sudo apt install ./dist_electron/XileHUD-0.6.12-amd64.deb
+cp dist_electron/XileHUD-*.deb /tmp/ && sudo apt install /tmp/XileHUD-*.deb
 ```
+
+Builds are versioned `<upstream>+fork.<N>` (N counts this fork's commits), so each new build installs as an upgrade. The running version shows in the tray menu, the overlay's bottom bar, and Settings > About, and every launch is logged to `~/.config/XileHUD/logs/xilehud.log`. Copying the package to `/tmp` first just avoids apt's harmless "couldn't be accessed by user '_apt'" notice.
 
 Use the `.deb` on Ubuntu 24.04 and newer. It installs an AppArmor profile that lets Chromium's sandbox run. The AppImage in `dist_electron/` works on other distributions, but on Ubuntu 24.04+ it can only start with `--no-sandbox`, which turns off the protection described above.
 
