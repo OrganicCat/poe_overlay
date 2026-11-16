@@ -46,7 +46,10 @@ export function configureOverlayWindow(win: BrowserWindow, pinned: boolean = tru
 
   // Non-focusable prevents the window from stealing OS focus from the game.
   // Exception: windows that need keyboard input (settings, tree search, notes).
-  if (!allowFocus && typeof (win as any).setFocusable === 'function') {
+  // Not on Linux: an X11 window that can't take focus also can't keep a
+  // <select> dropdown open (the popup needs a pointer grab), so dropdowns in
+  // the gems/gear/notes/tree windows did nothing.
+  if (!allowFocus && process.platform !== 'linux' && typeof (win as any).setFocusable === 'function') {
     safe(() => (win as any).setFocusable(false));
   }
 
