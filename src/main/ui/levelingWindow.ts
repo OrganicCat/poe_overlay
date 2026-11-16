@@ -991,12 +991,7 @@ export class LevelingWindow {
 
     // Open leveling settings splash
     ipcMain.handle('open-leveling-settings', async (event, tabName?: string) => {
-      openLevelingSettingsSplash({
-        settingsService: this.settingsService,
-        overlayVersion: this.overlayVersion,
-        overlayWindow: this.window,
-        initialTab: tabName
-      });
+      this.openLevelingSettings(typeof tabName === 'string' ? tabName : undefined);
       return true;
     });
 
@@ -2074,6 +2069,20 @@ export class LevelingWindow {
     // Always reset clickthrough when stopping tracker
     this.applyIgnoreMouseEvents(false, 'stopUltraHoverTracker');
     console.log('[LevelingWindow] stopUltraHoverTracker (hover interval cleared)');
+  }
+
+  /**
+   * Open the leveling settings window, optionally on a tab ('pob' is the
+   * Guide Import tab where builds are imported, activated, and renamed).
+   */
+  public openLevelingSettings(tabName?: string): void {
+    const allowedTabs = ['display', 'behavior', 'hotkeys', 'integration', 'pob', 'advanced'];
+    openLevelingSettingsSplash({
+      settingsService: this.settingsService,
+      overlayVersion: this.overlayVersion,
+      overlayWindow: this.window,
+      initialTab: tabName && allowedTabs.includes(tabName) ? tabName : undefined
+    });
   }
 
   /**

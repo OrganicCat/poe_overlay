@@ -148,6 +148,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
     
     // Leveling window
+    openLevelingBuilds: () => ipcRenderer.invoke('open-leveling-builds'),
+    openPassiveTree: () => ipcRenderer.invoke('open-passive-tree'),
     toggleLevelingWindow: () => ipcRenderer.invoke('toggle-leveling-window'),
     
     // Feature configuration

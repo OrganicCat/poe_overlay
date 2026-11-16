@@ -3392,6 +3392,22 @@ if ([ForegroundWindowHelper]::IsIconic($ptr)) {
             }
         });
 
+        // Overlay footer shortcuts: build import/management and the passive tree
+        try { ipcMain.removeHandler('open-leveling-builds'); } catch {}
+        ipcMain.handle('open-leveling-builds', () => {
+            try {
+                this.ensureLevelingWindow().openLevelingSettings('pob');
+                return { success: true };
+            } catch (err: any) {
+                return { success: false, error: err?.message || 'Failed to open builds' };
+            }
+        });
+        try { ipcMain.removeHandler('open-passive-tree'); } catch {}
+        ipcMain.handle('open-passive-tree', () => {
+            this.openPassiveTreeFromTray();
+            return { success: true };
+        });
+
         // Open external URLs in system browser
         ipcMain.handle('open-external', async (_e, url: string) => {
             try {

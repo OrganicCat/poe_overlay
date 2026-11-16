@@ -2046,6 +2046,7 @@ function buildLevelingSettingsSplashHtml(
       ipcRenderer.invoke('get-pob-build').then(pobBuild => {
         const infoEl = document.getElementById('pobBuildInfo');
         const clearBtn = document.getElementById('clearPobBtn');
+        if (!infoEl) return; // legacy single-build panel; the build list replaced it
         
         if (pobBuild && pobBuild.className) {
           infoEl.innerHTML = \`
