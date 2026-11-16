@@ -44,6 +44,7 @@ import { resolveLocalImage, resolveByNameOrSlug, getImageIndexMeta } from './ser
 import { rateLimiter } from './services/rateLimiter.js';
 import { resolveImageInRoot, localImageUrl } from './security/safePath.js';
 import { installAppHardening } from './security/appHardening.js';
+import { getBuildInfo, describeBuild, logStartup } from './buildInfo.js';
 import { isOverlayVersion, type OverlayVersion } from '../types/overlayVersion.js';
 import { jsonForScript } from './security/htmlEscape.js';
 
@@ -130,6 +131,9 @@ function fetchLatestReleaseInfo(): Promise<GithubReleaseInfo> {
 }
 
 function getOverlayAppVersion(): string {
+    // Fork builds carry their own version (see scripts/build-info.mjs).
+    const built = getBuildInfo();
+    if (built.forkBuild !== null) return built.version;
     try {
         const packagePath = path.join(__dirname, '../../package.json');
         if (fs.existsSync(packagePath)) {
@@ -342,6 +346,7 @@ if ($hwnd -eq [System.IntPtr]::Zero) {
 
     constructor() {
         app.whenReady().then(async () => {
+            logStartup();
             // Register local-image:// protocol handler for bundled images
             const { protocol } = await import('electron');
             const resPath = (process as any).resourcesPath || path.join(__dirname, '..', '..');
@@ -3391,6 +3396,9 @@ if ([ForegroundWindowHelper]::IsIconic($ptr)) {
                 } as OverlayUpdateCheckResult;
             }
         });
+
+        try { ipcMain.removeHandler('get-build-info'); } catch {}
+        ipcMain.handle('get-build-info', () => ({ ...getBuildInfo(), display: describeBuild() }));
 
         // Overlay footer shortcuts: build import/management and the passive tree
         try { ipcMain.removeHandler('open-leveling-builds'); } catch {}

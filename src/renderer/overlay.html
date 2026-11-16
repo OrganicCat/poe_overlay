@@ -508,6 +508,7 @@
             </button>
         </div>
         <div class="footer-actions" style="display:flex; align-items:center; gap:6px; -webkit-app-region: no-drag;">
+            <span id="buildVersion" title="" style="font-size:10px; color: var(--text-secondary, #888); opacity:0.75; user-select:text; white-space:nowrap;"></span>
             <button id="updateBadge" class="pin-btn" style="display:none; background: var(--accent-orange); border: 1px solid var(--accent-orange); color: #fff; border-radius: 4px; padding: 3px 8px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.2px;">
                 New Update
             </button>
@@ -527,6 +528,13 @@
 
     // Query commonly used elements (guard undefined usage)
     const tabMod = document.getElementById('tabModifier');
+    // Show which build is running (version + commit) in the footer
+    window.electronAPI?.getBuildInfo?.().then((info) => {
+        const el = document.getElementById('buildVersion');
+        if (!el || !info) return;
+        el.textContent = 'v' + info.version;
+        el.title = 'XileHUD ' + (info.display || info.version) + (info.builtAt ? '\nBuilt ' + info.builtAt : '');
+    }).catch(() => {});
     // Footer shortcuts to the leveling build manager and passive tree
     document.getElementById('btnLevelingBuilds')?.addEventListener('click', () => {
         window.electronAPI?.openLevelingBuilds?.().catch?.((e) => console.warn('[Builds] open failed', e));

@@ -15,6 +15,7 @@ import type { SettingsService } from '../services/settingsService.js';
 import { isOverlayVersion, type OverlayVersion } from '../../types/overlayVersion.js';
 import { secureWebPreferences } from '../security/webPreferences.js';
 import { jsonForScript } from '../security/htmlEscape.js';
+import { getBuildInfo, describeBuild } from '../buildInfo.js';
 
 // Optional updater (will be active in packaged builds)
 let autoUpdater: any = null;
@@ -39,8 +40,10 @@ const POE1_LEAGUES: LeagueOption[] = [
   { value: 'Hardcore', label: 'Hardcore' }
 ];
 
-// Get version from package.json
+// Version shown in Settings > About. Fork builds include the commit and date.
 function getAppVersion(): string {
+  const built = getBuildInfo();
+  if (built.forkBuild !== null) return describeBuild(built);
   try {
     // Try to read from overlay package.json
     const packagePath = join(__dirname, '../../../package.json');

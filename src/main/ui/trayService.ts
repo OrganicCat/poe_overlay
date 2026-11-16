@@ -1,6 +1,7 @@
 import { app, Tray, Menu, nativeImage, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import { describeBuild } from '../buildInfo.js';
 
 export interface CreateTrayParams {
   onToggleOverlay: () => void;
@@ -137,6 +138,7 @@ export function createTray(params: CreateTrayParams): Tray | null {
 
   const contextMenu = Menu.buildFromTemplate([
     { label: `XileHUD (${currentHotkeyLabel})`, enabled: false },
+    { label: `Version ${describeBuild()}`, enabled: false },
     { type: 'separator' },
     { label: 'Modifiers', click: () => onOpenModifiers(), visible: showModifiers },
     { label: 'Merchant History', click: () => onOpenHistory(), visible: showMerchantHistory },
