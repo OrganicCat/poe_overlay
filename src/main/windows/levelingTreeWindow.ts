@@ -126,13 +126,26 @@ function buildTreeWindowHtml(ultraMinimal: boolean = false, pinned: boolean = tr
       background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
       padding: 4px 8px;
       display: flex;
-      justify-content: flex-end;
+      justify-content: space-between;
+      gap: 8px;
       align-items: center;
       border-bottom: 1px solid #3a3a3a;
       -webkit-app-region: drag;
       cursor: move;
       min-height: 20px;
     }
+
+    #header-title {
+      flex: 1 1 auto;
+      min-width: 0;
+      font-size: 12px;
+      font-weight: 600;
+      color: #e5e7eb;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #header-title .subtle { color: #9ca3af; font-weight: 400; }
 
     #tree-search-wrap {
       position: absolute;
@@ -488,11 +501,11 @@ function buildTreeWindowHtml(ultraMinimal: boolean = false, pinned: boolean = tr
       background: rgba(42, 42, 42, 0.95);
       color: #c8c8c8;
       border: 1px solid #3a3a3a;
-      width: 90px;
+      width: 124px; /* fits "Lv ~64 · 120" */
       height: 44px;
-      padding: 0 8px;
+      padding: 0 6px;
       border-radius: 4px;
-      font-size: 14px;
+      font-size: 13px;
       text-align: center;
       pointer-events: auto;
       user-select: auto;
@@ -564,6 +577,7 @@ function buildTreeWindowHtml(ultraMinimal: boolean = false, pinned: boolean = tr
 <body>
   <div id="window-container">
     <div id="header">
+      <div id="header-title" title="Active build"></div>
       <div id="header-controls">
         <button class="header-btn pin-btn ${pinned ? 'active' : ''}" onclick="togglePinned()" id="pinBtn" title="Toggle Always On Top">📌</button>
         <button class="header-btn minimal-btn" onclick="toggleMinimalMode()" id="minimalBtn" title="Toggle Ultra Minimal Mode">◐</button>
@@ -729,6 +743,22 @@ function buildTreeWindowHtml(ultraMinimal: boolean = false, pinned: boolean = tr
       }
 
       const { specs, treeSvg, viewBox, treeData, gameVersion, currentAct, characterLevel, autoDetectEnabled: autoDetectFromPayload, savedTreeIndex, savedViewBox, buildSource: buildSourceFromPayload } = payload;
+
+      // Show which build this tree belongs to (title bar + window title).
+      try {
+        const rawName = String(payload.buildName || '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&amp;/g, '&');
+        const titleEl = document.getElementById('header-title');
+        if (titleEl) {
+          titleEl.textContent = '';
+          const label = document.createElement('span');
+          label.className = 'subtle';
+          label.textContent = 'Passive Tree · ';
+          titleEl.appendChild(label);
+          titleEl.appendChild(document.createTextNode(rawName || 'No build name'));
+          titleEl.title = rawName ? 'Active build: ' + rawName : 'Active build';
+        }
+        document.title = rawName ? 'Passive Tree · ' + rawName : 'Passive Skill Tree';
+      } catch (e) { console.warn('[Tree Window] Could not set build title', e); }
 
       if (!specs || specs.length === 0) {
         console.error('[Tree Window] No specs received!');
@@ -2385,6 +2415,13 @@ export function getPassiveTreeWindow(): BrowserWindow | null {
   return treeWindow;
 }
 
+// Supplies the active build's name for the tree window's title bar. Set by
+// LevelingWindow, which owns the build list.
+let buildNameProvider: (() => string | null) | null = null;
+export function setTreeBuildNameProvider(fn: (() => string | null) | null): void {
+  buildNameProvider = fn;
+}
+
 export function sendTreeData(treeSpecs: any[], gameVersion: 'poe1' | 'poe2' = 'poe1', currentAct: number = 1, characterLevel: number = 1, autoDetectEnabled: boolean = true, savedTreeIndex?: number, treeVersion: string = '3_26', buildSource?: 'pob' | 'mobalytics' | 'maxroll'): void {
   if (!treeWindow || treeWindow.isDestroyed()) {
     console.warn('[Tree Window] Cannot send tree data - window not available');
@@ -2479,7 +2516,10 @@ export function sendTreeData(treeSpecs: any[], gameVersion: 'poe1' | 'poe2' = 'p
   const savedBounds = loadTreeWindowBounds();
   const savedViewBox = savedBounds?.viewBox;
 
+  let buildName: string | null = null;
+  try { buildName = buildNameProvider ? buildNameProvider() : null; } catch { buildName = null; }
   treeWindow.webContents.send('tree-data-update', {
+    buildName,
     specs: filteredSpecs,
     treeSvg,
     viewBox,

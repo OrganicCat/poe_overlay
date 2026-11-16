@@ -9,7 +9,7 @@ import { openPobInfoBar, closePobInfoBar, updatePobInfoBar, isPobInfoBarOpen } f
 import { openLevelingGemsWindow, updateLevelingGemsWindow, updateLevelingGemsWindowBuild, updateLevelingGemsWindowCharacterLevel, closeLevelingGemsWindow, isGemsWindowOpen } from './levelingGemsWindow.js';
 import { openLevelingNotesWindow, updateNotesWindow, closeNotesWindow, isNotesWindowOpen } from './levelingNotesWindow.js';
 import { openLevelingGearWindow, updateGearWindow, updateGearWindowContext, closeGearWindow, isGearWindowOpen } from './levelingGearWindow.js';
-import { createPassiveTreeWindow, sendTreeData, updateTreeWindowContext, isTreeWindowOpen, closeTreeWindow } from '../windows/levelingTreeWindow.js';
+import { createPassiveTreeWindow, sendTreeData, setTreeBuildNameProvider, updateTreeWindowContext, isTreeWindowOpen, closeTreeWindow } from '../windows/levelingTreeWindow.js';
 import { levelingHotkeyManager } from '../hotkeys/levelingHotkeyManager.js';
 import { executeLogout, typeInChat, typeInStashSearch } from '../utils/chatCommand.js';
 import fs from 'fs';
@@ -86,6 +86,13 @@ export class LevelingWindow {
     this.loadProgress();
     this.registerIpcHandlers();
     this.registerHotkeys();
+
+    // The tree window's title bar shows the active build's name.
+    setTreeBuildNameProvider(() => {
+      const list = this.getPobBuildsList();
+      const active = (list.builds || []).find((b) => b.id === list.activeId) || (list.builds || []).find((b) => b.isActive);
+      return active?.name ?? null;
+    });
     
     // Auto-detect client.txt on first run (if not already attempted)
     this.autoDetectClientTxtOnStartup();
