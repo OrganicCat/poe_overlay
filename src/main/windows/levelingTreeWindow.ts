@@ -598,7 +598,7 @@ function buildTreeWindowHtml(ultraMinimal: boolean = false, pinned: boolean = tr
       <!-- Node Progression Controls (for Mobalytics/Maxroll builds) -->
       <div id="node-progression-controls" style="display: none;">
         <button onclick="prevNode()" title="Previous Node">◄</button>
-        <select id="node-count-select" title="Number of nodes to show"></select>
+        <select id="node-count-select" title="Passives shown so far, with the approximate character level that many points needs"></select>
         <button onclick="nextNode()" title="Next Node">►</button>
       </div>
     </div>
@@ -954,15 +954,13 @@ function buildTreeWindowHtml(ultraMinimal: boolean = false, pinned: boolean = tr
     function populateSelector() {
       const selector = document.getElementById('spec-selector');
       
+      const labels = stageLabels(currentSpecs);
       selector.innerHTML = currentSpecs.map((spec, i) => {
-        let displayName = spec.title || \`Tree \${i + 1}\`;
-        
-        // Always append node count for informational purposes
-        if (spec.nodeCount !== undefined) {
-          displayName = \`\${displayName} (\${spec.nodeCount} Nodes)\`;
-        }
-        
-        return \`<option value="\${i}">\${displayName}</option>\`;
+        const opt = document.createElement('option');
+        opt.value = String(i);
+        opt.textContent = labels[i];
+        opt.title = (spec.title || 'Untitled') + ' · ' + pointsSpent(spec) + ' passive points';
+        return opt.outerHTML;
       }).join('');
       
       selector.value = currentIndex;
@@ -1037,6 +1035,83 @@ function buildTreeWindowHtml(ultraMinimal: boolean = false, pinned: boolean = tr
         const ipcRenderer = window.electronIpc;
         ipcRenderer.send('tree-spec-selected', currentIndex);
       }
+    }
+
+    // ---- Readable stage labels -------------------------------------------
+    // A tree stage only stores which passives are taken, so the character level
+    // it corresponds to is estimated: one point per level after 1, plus quest
+    // rewards earned along the campaign (PoE1, typical pace; approximate).
+    const QUEST_POINTS_BY_LEVEL = [[1, 0], [12, 2], [22, 5], [32, 7], [40, 8], [45, 9], [50, 12], [55, 14], [60, 16], [64, 18], [68, 22], [100, 23]];
+    function questPointsAt(level) {
+      for (let i = 1; i < QUEST_POINTS_BY_LEVEL.length; i++) {
+        const [l1, q1] = QUEST_POINTS_BY_LEVEL[i - 1];
+        const [l2, q2] = QUEST_POINTS_BY_LEVEL[i];
+        if (level <= l2) return Math.floor(q1 + (q2 - q1) * (level - l1) / (l2 - l1));
+      }
+      return 23;
+    }
+    function estimateLevelForPoints(points) {
+      if (!points || points <= 0) return 1;
+      for (let level = 1; level <= 100; level++) {
+        if ((level - 1) + questPointsAt(level) >= points) return level;
+      }
+      return 100;
+    }
+    function ascendancyNodeIds() {
+      const ids = new Set();
+      const graphs = (currentTreeData && currentTreeData.graphs) || [];
+      for (let g = 1; g < graphs.length; g++) {
+        Object.keys((graphs[g] && graphs[g].nodes) || {}).forEach(id => ids.add(String(id)));
+      }
+      return ids;
+    }
+    // Passive points a stage spends (ascendancy points come from the Labyrinth).
+    function pointsSpent(spec) {
+      const asc = ascendancyNodeIds();
+      const all = Array.isArray(spec.allocatedNodes) && spec.allocatedNodes.length
+        ? spec.allocatedNodes
+        : ((spec.parsedUrl && spec.parsedUrl.nodes) || []);
+      return all.filter(id => !asc.has(String(id))).length;
+    }
+    function isGenericStageTitle(title) {
+      const t = String(title || '').trim();
+      return !t || /^\\(?untitled\\)?$/i.test(t) || /^(tree|stage|set|spec|build|step|part|phase)?\\s*#?\\s*\\d+$/i.test(t);
+    }
+    // Labels for the stage dropdown, e.g. "Levels 1-12", "Levels 13-32",
+    // "Endgame (level ~92)". Titles are only displayed differently; the stored
+    // build keeps its own names (auto-detect parses them).
+    function stageLabels(specs) {
+      const isPoe1 = (typeof currentGameVersion === 'undefined' || currentGameVersion !== 'poe2');
+      let prevLevel = 0;
+      return specs.map((spec, i) => {
+        const title = String(spec.title || '').trim();
+        const range = title.match(/^(?:levels?|lvl|lv)?\\s*(\\d{1,3})\\s*(?:-|–|to)\\s*(\\d{1,3})\\b(.*)$/i);
+        if (range) {
+          const rest = range[3].trim().replace(/^[-:,]\\s*/, '');
+          prevLevel = Number(range[2]);
+          return 'Levels ' + range[1] + '–' + range[2] + (rest ? ' · ' + rest : '');
+        }
+        const plus = title.match(/^(?:levels?|lvl|lv)?\\s*(\\d{1,3})\\s*\\+\\s*(.*)$/i);
+        if (plus) {
+          const rest = plus[2].trim().replace(/^[-:,]\\s*/, '');
+          prevLevel = Math.max(prevLevel, Number(plus[1]));
+          return 'Levels ' + plus[1] + '+' + (rest ? ' · ' + rest : '');
+        }
+        if (!isPoe1) return title || ('Tree ' + (i + 1));
+        const level = estimateLevelForPoints(pointsSpent(spec));
+        let label;
+        if (isGenericStageTitle(title)) {
+          // "(est.)" marks ranges worked out from the passive count, so they
+          // aren't mistaken for ranges the build's author wrote.
+          label = level > prevLevel && prevLevel < 100
+            ? 'Levels ' + (prevLevel + 1) + '–' + level + ' (est.)'
+            : 'Level ~' + level;
+        } else {
+          label = title + ' (level ~' + level + ')';
+        }
+        prevLevel = Math.max(prevLevel, level);
+        return label;
+      });
     }
 
     // Node Progression Functions (for Mobalytics/Maxroll builds)
@@ -1155,7 +1230,9 @@ function buildTreeWindowHtml(ultraMinimal: boolean = false, pinned: boolean = tr
       }
       
       select.innerHTML = options.map(function(val) { 
-        return '<option value="' + val + '" ' + (val === currentValue ? 'selected' : '') + '>' + val + '</option>';
+        const isPoe1 = (typeof currentGameVersion === 'undefined' || currentGameVersion !== 'poe2');
+        const text = isPoe1 && val > 0 ? ('Lv ~' + estimateLevelForPoints(val) + ' · ' + val) : String(val);
+        return '<option value="' + val + '" ' + (val === currentValue ? 'selected' : '') + '>' + text + '</option>';
       }).join('');
       
       // Set the value directly to ensure it displays correctly
