@@ -1310,6 +1310,7 @@ export class LevelingWindow {
           className: entry.build.className,
           ascendancyName: entry.build.ascendancyName,
           level: entry.build.level,
+          stageCount: Array.isArray(entry.build.treeSpecs) ? entry.build.treeSpecs.length : 0,
           createdAt: entry.createdAt,
           updatedAt: entry.updatedAt
         })),
@@ -1320,6 +1321,8 @@ export class LevelingWindow {
     // Rename POB build
     ipcMain.handle('rename-pob-build', async (event, buildId: string, newName: string) => {
       try {
+        newName = String(newName ?? '').replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, 80);
+        if (!newName) return { success: false, error: 'Name cannot be empty' };
         const buildsList = this.getPobBuildsList();
         const updatedList = renameBuild(buildsList, buildId, newName);
         this.savePobBuildsList(updatedList);

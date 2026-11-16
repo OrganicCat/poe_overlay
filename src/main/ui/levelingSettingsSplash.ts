@@ -757,22 +757,44 @@ function buildLevelingSettingsSplashHtml(
       color: var(--text-primary);
       margin-bottom: 4px;
       cursor: text;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
+    /* The name is an editable box; the outline on hover/focus shows that. */
     .pob-build-name input {
       background: transparent;
-      border: none;
+      border: 1px solid transparent;
       color: inherit;
       font: inherit;
-      width: 100%;
+      flex: 1 1 auto;
+      min-width: 0;
       outline: none;
-      padding: 0;
+      padding: 2px 6px;
+      margin-left: -7px;
+      border-radius: 4px;
+    }
+
+    .pob-build-name input:hover {
+      border-color: rgba(255, 255, 255, 0.18);
     }
 
     .pob-build-name input:focus {
-      background: rgba(255, 255, 255, 0.05);
-      padding: 2px 6px;
-      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(74, 222, 128, 0.6);
+    }
+
+    .pob-build-stages {
+      flex: 0 0 auto;
+      font-size: 10px;
+      font-weight: 600;
+      color: #cfd4ff;
+      background: rgba(74, 158, 255, 0.15);
+      border: 1px solid rgba(74, 158, 255, 0.35);
+      border-radius: 10px;
+      padding: 1px 7px;
+      white-space: nowrap;
     }
 
     .pob-build-details {
@@ -1668,10 +1690,14 @@ function buildLevelingSettingsSplashHtml(
                 <div class="pob-build-name">
                   <input 
                     type="text" 
+                    id="buildName-\${build.id}"
+                    maxlength="80"
+                    title="Click to rename"
                     value="\${escapeHtml(build.name)}" 
                     onblur="saveBuildName('\${build.id}', this.value)"
-                    onkeydown="if(event.key==='Enter')this.blur()"
+                    onkeydown="if(event.key==='Enter')this.blur(); if(event.key==='Escape'){this.value=this.defaultValue;this.blur();}"
                   />
+                  <span class="pob-build-stages" title="Passive tree stages in this build">\${build.stageCount || 0} \${(build.stageCount || 0) === 1 ? 'stage' : 'stages'}</span>
                   \${isActive ? '<span class="pob-build-active-badge">Active</span>' : ''}
                 </div>
                 <div class="pob-build-details">
@@ -1679,6 +1705,7 @@ function buildLevelingSettingsSplashHtml(
                 </div>
               </div>
               <div class="pob-build-actions">
+                <button class="pob-build-btn" onclick="renameBuildPrompt('\${build.id}')" title="Rename this build">✎ Rename</button>
                 \${!isActive ? \`<button class="pob-build-btn activate" onclick="activateBuild('\${build.id}')">✓ Activate</button>\` : ''}
                 <button class="pob-build-btn delete" onclick="deleteBuild('\${build.id}')">✕ Delete</button>
               </div>
@@ -1707,6 +1734,13 @@ function buildLevelingSettingsSplashHtml(
         .replace(/'/g, '&#39;');
     }
     
+    function renameBuildPrompt(buildId) {
+      const input = document.getElementById('buildName-' + buildId);
+      if (!input) return;
+      input.focus();
+      input.select();
+    }
+
     function saveBuildName(buildId, newName) {
       if (!newName || !newName.trim()) return;
       
